@@ -5,64 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>캠핑장 날씨 대시보드</title>
 <style>
-/* ...기존 스타일 유지... */
-
-/* ── 반응형 레이아웃 수정 ── */
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh; /* PC 기본값 */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f2;--bg2:#fff;--bg3:#f0efe9;
+  --text:#1a1a18;--t2:#5f5e5a;--t3:#9a9992;
+  --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.2);
+  --teal:#1D9E75;--tl:#E1F5EE;--td:#085041;
+  --blue:#378ADD;--bl:#E6F1FB;
+  --amber:#BA7517;--al:#FAEEDA;
+  --red:#E24B4A;--rl:#FCEBEB;
+  --r:10px;--rs:6px
 }
-
-.main {
-  display: flex;
-  flex: 1;
-  overflow: hidden; /* PC에서는 내부 스크롤 */
-}
-
-/* ── 모바일 최적화 (768px 미만) ── */
-@media (max-width: 768px) {
-  body {
-    overflow: auto; /* 전체 스크롤 허용 */
-    height: auto;
-  }
-  
-  .app {
-    height: auto;
-  }
-
-  .main {
-    flex-direction: column; /* 가로 배치를 세로로 전환 */
-    overflow: visible;
-  }
-
-  .side {
-    width: 100%; /* 사이드바가 위쪽 전체 차지 */
-    height: 400px; /* 지도를 위해 적절한 높이 부여 */
-    border-right: none;
-    border-bottom: 1px solid var(--bd);
-  }
-
-  .content {
-    width: 100%;
-    padding: 15px;
-  }
-
-  /* 날씨 테이블이 잘리지 않게 가로 스크롤 허용 */
-  .weather-grid-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-bottom: 20px;
-  }
-
-  .weather-table {
-    min-width: 600px; /* 테이블 최소 너비 보장 */
-  }
-
-  /* 헤더 글자 크기 조정 */
-  .hdr h1 { font-size: 16px; }
-}
-</style>
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
 button{font-family:inherit;cursor:pointer}
 
