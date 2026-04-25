@@ -1,3 +1,4 @@
+#안정버전
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -27,7 +28,7 @@ button{font-family:inherit;cursor:pointer}
 /* ── 모바일 반응형 코드 (768px 이하일 때만 작동) ── */
 @media (max-width: 768px) {
   body { 
-    overflow: auto !important; /* 전체 스크롤 허용 */
+    overflow: auto !important; /* 바디 스크롤 개방 */
     height: auto !important; 
   }
   .app { 
@@ -35,25 +36,30 @@ button{font-family:inherit;cursor:pointer}
     display: block !important; 
   }
   .main { 
-    flex-direction: column !important; /* 세로로 정렬 */
-    display: block !important;
+    display: block !important; /* flex 해제 */
     height: auto !important;
     overflow: visible !important;
   }
   .sb { 
-    width: 100% !important; /* 사이드바(목록)를 상단 전체로 */
-    height: 500px !important; /* 목록 높이 적절히 조절 */
+    width: 100% !important; 
+    height: auto !important; /* 고정 높이 500px 제거 */
+    overflow: visible !important; /* 내부 스크롤 제거 */
     border-right: none !important;
     border-bottom: 1px solid var(--bd) !important;
   }
+  .citems { 
+    max-height: 450px !important; /* 목록은 너무 길면 불편하니 최소한의 높이만 지정 */
+    overflow-y: auto !important; 
+  }
   .center { 
     width: 100% !important; 
-    height: 400px !important; /* 지도를 중간에 배치 */
+    height: 400px !important; 
     flex: none !important;
   }
   .detail { 
-    width: 100% !important; /* 상세 정보를 맨 아래 전체로 */
-    height: auto !important;
+    width: 100% !important; 
+    height: auto !important; /* 고정 높이 제거 */
+    overflow: visible !important; /* 상세정보 내부 스크롤 완전 제거 */
     border-left: none !important;
     border-top: 1px solid var(--bd) !important;
   }
