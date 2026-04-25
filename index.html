@@ -25,43 +25,33 @@ button{font-family:inherit;cursor:pointer}
 .hdr { background: var(--bg2); border-bottom: 1px solid var(--bd); padding: 0 14px; display: flex; align-items: center; gap: 10px; height: 50px; flex-shrink: 0; }
 .main { display: flex; flex: 1; overflow: hidden; }
 
-/* ── 모바일 반응형 코드 (768px 이하일 때만 작동) ── */
+/* ── 모바일 반응형 코드 ── */
 @media (max-width: 768px) {
-  body { 
-    overflow: auto !important; /* 바디 스크롤 개방 */
-    height: auto !important; 
-  }
-  .app { 
-    height: auto !important; 
-    display: block !important; 
-  }
+  body { overflow: auto !important; height: auto !important; }
+  .app { height: auto !important; display: block !important; }
   .main { 
-    display: block !important; /* flex 해제 */
+    display: flex !important; 
+    flex-direction: column !important; /* 세로로 나열 */
     height: auto !important;
     overflow: visible !important;
   }
   .sb { 
     width: 100% !important; 
-    height: auto !important; /* 고정 높이 500px 제거 */
-    overflow: visible !important; /* 내부 스크롤 제거 */
+    order: 1 !important; /* 1번: 검색창/목록 */
     border-right: none !important;
     border-bottom: 1px solid var(--bd) !important;
   }
-  .citems { 
-    max-height: 450px !important; /* 목록은 너무 길면 불편하니 최소한의 높이만 지정 */
-    overflow-y: auto !important; 
+  .detail { 
+    width: 100% !important; 
+    order: 2 !important; /* 2번: 상세정보(사진/날씨) */
+    border-left: none !important;
+    border-top: 1px solid var(--bd) !important;
   }
   .center { 
     width: 100% !important; 
     height: 400px !important; 
+    order: 3 !important; /* 3번: 지도 (가장 아래로) */
     flex: none !important;
-  }
-  .detail { 
-    width: 100% !important; 
-    height: auto !important; /* 고정 높이 제거 */
-    overflow: visible !important; /* 상세정보 내부 스크롤 완전 제거 */
-    border-left: none !important;
-    border-top: 1px solid var(--bd) !important;
   }
 }
 
@@ -543,6 +533,9 @@ function _applyFilter() {
   const sort=document.getElementById('sortSel').value;
 
   FILTERED = ALL.filter(c=>{
+    if (txt && !c.name.toLowerCase().includes(txt) && !c.addr.toLowerCase().includes(txt)) {
+      return false; 
+    }
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
