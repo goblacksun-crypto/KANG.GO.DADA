@@ -1155,7 +1155,125 @@ function initCharts(){
 function setAst(t,cls){const e=document.getElementById('ast');e.textContent=t;e.className='ast '+cls;}
 function setLbar(v){document.getElementById('lbar').className='lbar'+(v?' on':'');}
 function toast(msg){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  const t=document.getElementById('toa<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>캠핑장 날씨 대시보드</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f2;--bg2:#fff;--bg3:#f0efe9;
+  --text:#1a1a18;--t2:#5f5e5a;--t3:#9a9992;
+  --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.2);
+  --teal:#1D9E75;--tl:#E1F5EE;--td:#085041;
+  --blue:#378ADD;--bl:#E6F1FB;
+  --amber:#BA7517;--al:#FAEEDA;
+  --red:#E24B4A;--rl:#FCEBEB;
+  --r:10px;--rs:6px
+}
+body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
+button{font-family:inherit;cursor:pointer}
+
+/* ── 레이아웃 (PC 기본) ── */
+.app { display: flex; flex-direction: column; height: 100vh; }
+.hdr { background: var(--bg2); border-bottom: 1px solid var(--bd); padding: 0 14px; display: flex; align-items: center; gap: 10px; height: 50px; flex-shrink: 0; }
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── 모바일 반응형 (스크롤 트랩 완전 해결) ── */
+@media (max-width: 768px) {
+  body { overflow: auto !important; height: auto !important; }
+  .app { height: auto !important; display: block !important; }
+  .main { display: block !important; height: auto !important; overflow: visible !important; }
+  
+  .sb { 
+    width: 100% !important; height: auto !important; 
+    overflow: visible !important; border-right: none !important;
+    border-bottom: 1px solid var(--bd) !important;
+  }
+  .citems { max-height: 400px !important; overflow-y: auto !important; }
+  .center { width: 100% !important; height: 450px !important; flex: none !important; }
+  .detail { 
+    width: 100% !important; height: auto !important; 
+    overflow: visible !important; border-left: none !important;
+    border-top: 1px solid var(--bd) !important;
+  }
+}
+
+/* ── 사이드바 / 목록 ── */
+.sb{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+.stabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
+.stab{flex:1;padding:9px 0;text-align:center;font-size:13px;font-weight:500;color:var(--t3);background:none;border:none;border-bottom:2px solid transparent}
+.stab.on{color:var(--teal);border-bottom-color:var(--teal)}
+.region-btns{padding:8px 10px;border-bottom:1px solid var(--bd);flex-shrink:0;display:flex;flex-wrap:wrap;gap:4px}
+.rb{font-size:11px;padding:3px 9px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2)}
+.rb.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+.sp{padding:10px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.srow{display:flex;gap:5px;margin-bottom:6px}
+select, .si{flex:1;border:1px solid var(--bd2);border-radius:var(--rs);padding:6px 7px;font-size:12px;background:var(--bg);outline:none}
+.sbtn{padding:6px 12px;background:var(--teal);color:#fff;border:none;border-radius:var(--rs);font-size:12px;font-weight:600}
+.lhdr{padding:6px 10px;font-size:11px;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center}
+.citems{overflow-y:auto;flex:1}
+.ci{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;gap:8px;align-items:flex-start}
+.ci.on{background:var(--tl);border-left:3px solid var(--teal)}
+.cdot{width:7px;height:7px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.cnm{font-size:12px;font-weight:600}
+.csub{font-size:10px;color:var(--t3)}
+.favbtn{background:none;border:none;font-size:15px;opacity:.3}
+.favbtn.on{opacity:1;color:var(--red)}
+
+/* ── 지도 / 상세패널 ── */
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#a8c8d8;position:relative}
+#d3map{width:100%;height:100%}
+.detail{width:340px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--bd);overflow-y:auto;display:flex;flex-direction:column}
+.wgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-top:5px}
+.wd{background:var(--bg3);border-radius:4px;padding:4px 1px;text-align:center;font-size:8px}
+.wd.today{border:1.5px solid var(--teal)}
+.link-btn{font-size:10px;padding:4px 9px;border-radius:5px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:5px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="hdr">
+    <div class="logo">⛺ 캠핑장 날씨 대시보드 <em>21년차 IT 전문가 에디션</em></div>
+  </div>
+  <div class="main">
+    <div class="sb">
+      <div class="stabs">
+        <button class="stab on">검색</button>
+        <button class="stab">찜 <span id="favBadge">0</span></button>
+      </div>
+      <div class="region-btns">
+        <button class="rb on" onclick="quickRegion(this,'')">전국</button>
+        <button class="rb" onclick="quickRegion(this,'경기도')">경기</button>
+        <button class="rb" onclick="quickRegion(this,'강원특별자치도')">강원</button>
+      </div>
+      <div class="sp">
+        <div class="srow">
+          <input class="si" id="sinput" type="text" placeholder="캠핑장 이름 검색..." onkeydown="if(event.key==='Enter')runSearch()">
+          <button class="sbtn" onclick="runSearch()">검색</button>
+        </div>
+      </div>
+      <div class="lhdr"><span id="listCnt">로드 중...</span></div>
+      <div class="citems" id="campList"></div>
+    </div>
+    <div class="center" id="mapWrap">
+      <div id="d3map"></div>
+      <div id="pinsWrap" style="position:absolute;inset:0;pointer-events:none"></div>
+    </div>
+    <div class="detail" id="dcontent">
+      <div style="padding:40px;text-align:center;color:#999">캠핑장을 선택해주세요</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+let ALL = [
+  {id:'s1',name:"아침고요수목원 오토캠핑",doNm:"경기도",siNm:"가평군",addr:"경기 가평군 상면 수목원로 432",lat:37.7853,lng:127.5225,types:["오토캠핑"],fac:["전기","샤워실"]},
+  {id:'s2',name:"자라섬 오토캠핑장",doNm:"경기도",siNm:"가평군",addr:"경기 가평군 가평읍 자라섬로 60",lat:37.759,lng:127.5062,types:["오토캠핑"]},
+  {id:'sst');t.textContent=msg;t.classList.add('show');
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2400);
 }
 window.addEventListener('resize',()=>renderPins());
