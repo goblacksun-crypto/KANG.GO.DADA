@@ -19,17 +19,45 @@
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
 button{font-family:inherit;cursor:pointer}
 
-/* ── 레이아웃 ── */
-.app{display:flex;flex-direction:column;height:100vh}
-.hdr{background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 14px;display:flex;align-items:center;gap:10px;height:50px;flex-shrink:0}
-.logo{font-size:15px;font-weight:700;color:var(--teal);white-space:nowrap}
-.logo em{font-style:normal;font-weight:400;font-size:11px;color:var(--t3);margin-left:5px}
-.hdr-r{display:flex;gap:6px;align-items:center;margin-left:auto}
-.htag{font-size:10px;padding:2px 7px;border-radius:4px}
-.ast{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
-.ast.live{background:var(--tl);color:var(--td)}
-.ast.demo{background:var(--bg3);color:var(--t2)}
-.main{display:flex;flex:1;overflow:hidden}
+/* ── 레이아웃 (PC 기본) ── */
+.app { display: flex; flex-direction: column; height: 100vh; }
+.hdr { background: var(--bg2); border-bottom: 1px solid var(--bd); padding: 0 14px; display: flex; align-items: center; gap: 10px; height: 50px; flex-shrink: 0; }
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── 모바일 반응형 코드 (768px 이하일 때만 작동) ── */
+@media (max-width: 768px) {
+  body { 
+    overflow: auto !important; /* 전체 스크롤 허용 */
+    height: auto !important; 
+  }
+  .app { 
+    height: auto !important; 
+    display: block !important; 
+  }
+  .main { 
+    flex-direction: column !important; /* 세로로 정렬 */
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .sb { 
+    width: 100% !important; /* 사이드바(목록)를 상단 전체로 */
+    height: 500px !important; /* 목록 높이 적절히 조절 */
+    border-right: none !important;
+    border-bottom: 1px solid var(--bd) !important;
+  }
+  .center { 
+    width: 100% !important; 
+    height: 400px !important; /* 지도를 중간에 배치 */
+    flex: none !important;
+  }
+  .detail { 
+    width: 100% !important; /* 상세 정보를 맨 아래 전체로 */
+    height: auto !important;
+    border-left: none !important;
+    border-top: 1px solid var(--bd) !important;
+  }
+}
 
 /* ── 사이드바 ── */
 .sb{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
