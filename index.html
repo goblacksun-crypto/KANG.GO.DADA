@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Version: v5.9 | Deployed: 2026-04-27 18:35:31 -->
-<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
+<!-- Version: v5.22 | Deployed: 2026-04-27 21:32:37 -->
+<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>캠핑장 날씨 대시보드 v5.9</title>
+<title>캠핑장 날씨 대시보드</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -19,6 +19,15 @@
   --r:10px;--rs:6px
 }
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
+@media(max-width:768px){
+  .main{flex-direction:column;overflow-y:auto}
+  .sb{width:100%;height:auto;max-height:45vh;border-right:none;border-bottom:1px solid var(--bd);flex-shrink:0}
+  #sbWeather{max-height:200px;overflow-y:auto}
+  .center{flex:none;height:320px;flex-shrink:0}
+  .detail{width:100%;border-left:none;border-top:1px solid var(--bd);flex-shrink:0}
+  .hdr{height:auto;padding:6px 10px;flex-wrap:wrap;gap:5px}
+  .hdr-r .htag{display:none}
+}
 button{font-family:inherit;cursor:pointer}
 
 /* ── 레이아웃 ── */
@@ -58,12 +67,7 @@ select:focus{border-color:var(--teal)}
 .sr{padding:6px 9px;background:var(--bg3);color:var(--t2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:12px}
 
 /* 칩 */
-.chips{padding:8px 10px;border-bottom:1px solid var(--bd);flex-shrink:0}
-.clabel{font-size:10px;color:var(--t3);margin:5px 0 3px;display:block}
-.clabel:first-child{margin-top:0}
-.crow{display:flex;flex-wrap:wrap;gap:4px}
-.chip{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--bd2);color:var(--t2);background:var(--bg2)}
-.chip.on{background:var(--tl);border-color:var(--teal);color:var(--td)}
+/* 필터 칩 제거 */
 
 /* 목록 */
 .lhdr{padding:6px 10px;font-size:11px;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
@@ -200,8 +204,14 @@ a.link-btn{display:inline-flex}
 <body>
 <div class="app">
 <div class="hdr">
-  <div class="logo">⛺ 캠핑장 날씨 대시보드 <em>서울 빅데이터 활용 경진대회</em></div>
-  <div style="font-size:12px;color:#fff;background:var(--teal);padding:3px 10px;border-radius:99px;font-weight:700;white-space:nowrap;flex-shrink:0">강고다다</div>
+  <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;margin-right:8px">
+    <div style="font-size:16px;font-weight:800;color:var(--teal);letter-spacing:-.5px">(가칭) 가라마라</div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <span style="font-size:11px;font-weight:700;color:var(--text)">강고다다</span>
+      <span style="font-size:10px;color:var(--t3)">v5.22</span>
+      <span style="font-size:10px;color:var(--t3);display:none" class="hdr-sub">서울 빅데이터 경진대회</span>
+    </div>
+  </div>
   <div class="hdr-r">
     <span style="font-size:11px;color:var(--t3);margin-right:4px">제작: <b style="color:var(--text)">강고다다</b></span>
     <span class="ast live" id="ast">● 연결 중...</span>
@@ -256,29 +266,10 @@ a.link-btn{display:inline-flex}
         <button class="sr" onclick="resetSearch()">✕</button>
       </div>
     </div>
-    <div class="chips">
-      <span class="clabel">유형</span>
-      <div class="crow">
-        <div class="chip" data-f="오토캠핑" onclick="toggleChip(this)">오토캠핑</div>
-        <div class="chip" data-f="글램핑" onclick="toggleChip(this)">글램핑</div>
-        <div class="chip" data-f="카라반" onclick="toggleChip(this)">카라반</div>
-        <div class="chip" data-f="일반야영" onclick="toggleChip(this)">일반야영</div>
-      </div>
-      <span class="clabel">환경</span>
-      <div class="crow">
-        <div class="chip" data-f="계곡" onclick="toggleChip(this)">계곡</div>
-        <div class="chip" data-f="바다" onclick="toggleChip(this)">바다</div>
-        <div class="chip" data-f="강/호수" onclick="toggleChip(this)">강/호수</div>
-        <div class="chip" data-f="숲/산" onclick="toggleChip(this)">숲/산</div>
-      </div>
-      <span class="clabel">시설</span>
-      <div class="crow">
-        <div class="chip" data-f="전기" onclick="toggleChip(this)">전기</div>
-        <div class="chip" data-f="샤워실" onclick="toggleChip(this)">샤워실</div>
-        <div class="chip" data-f="반려동물" onclick="toggleChip(this)">반려동물</div>
-        <div class="chip" data-f="수영장" onclick="toggleChip(this)">수영장</div>
-        <div class="chip" data-f="주말적합" onclick="toggleChip(this)">주말적합</div>
-      </div>
+    <!-- 사이드바 날씨 패널 -->
+    <div id="sbWeather" style="flex:1;overflow-y:auto;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:1.5rem 1rem;color:var(--t3);font-size:12px;text-align:center;flex-shrink:0;min-height:0">
+      <div style="font-size:28px;opacity:.2">🌤</div>
+      <div>캠핑장을 선택하면<br>날씨 예보가 표시됩니다</div>
     </div>
     <div class="lhdr">
       <span id="listCnt">로드 중...</span>
@@ -384,48 +375,21 @@ let favs = new Set(JSON.parse(localStorage.getItem('cfavs')||'[]'));
 let chips = new Set();
 let selId = null;
 
-/* ══ 캠핑장 데이터 캐시 (24시간, 압축 저장) ══ */
-const CAMP_CACHE_KEY = 'camping_all_v3'; // v3: 기존 캐시 자동 무효화
+/* ══ 캠핑장 데이터 캐시 (24시간) ══ */
+const CAMP_CACHE_KEY = 'camping_all_v2';
 const CAMP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24시간
-
-// 필수 필드만 배열로 압축 — localStorage 5MB 한계 대응
-function compressItem(c) {
-  return [c.id,c.name,c.doNm,c.siNm,c.addr||'',c.lat,c.lng,c.dist,
-          c.types.join('|'),c.env.join('|'),c.fac.join('|'),
-          c.season||'',c.sites||'?',c.img||'',c.siteUrl||''];
-}
-function decompressItem(a) {
-  return {id:a[0],name:a[1],doNm:a[2],siNm:a[3],addr:a[4],
-    lat:a[5],lng:a[6],dist:a[7],
-    types:a[8]?a[8].split('|'):[],
-    env:a[9]?a[9].split('|'):[],
-    fac:a[10]?a[10].split('|'):[],
-    season:a[11],sites:a[12],img:a[13],siteUrl:a[14],rain:null};
-}
 function getCampCache() {
   try {
     const raw = localStorage.getItem(CAMP_CACHE_KEY);
     if (!raw) return null;
     const {ts, data} = JSON.parse(raw);
     if (Date.now() - ts > CAMP_CACHE_TTL) { localStorage.removeItem(CAMP_CACHE_KEY); return null; }
-    // 압축 데이터(배열)면 복원, 아니면 그대로 반환
-    if (data.length && Array.isArray(data[0])) return data.map(decompressItem);
     return data;
   } catch { return null; }
 }
 function setCampCache(data) {
-  try {
-    const str = JSON.stringify({ts:Date.now(), data:data.map(compressItem)});
-    localStorage.setItem(CAMP_CACHE_KEY, str);
-    console.log(`✅ 캐시 저장: ${data.length}개, ${(str.length/1024).toFixed(0)}KB`);
-  } catch(e) {
-    try {
-      // 용량 초과시 절반만 저장
-      const half = data.slice(0, Math.floor(data.length/2));
-      localStorage.setItem(CAMP_CACHE_KEY, JSON.stringify({ts:Date.now(), data:half.map(compressItem)}));
-      console.warn(`⚠ 용량 초과 — ${half.length}개만 캐시 저장`);
-    } catch(e2) { console.warn('캐시 저장 실패:', e2); }
-  }
+  try { localStorage.setItem(CAMP_CACHE_KEY, JSON.stringify({ts: Date.now(), data})); }
+  catch(e) { console.warn('캐시 저장 실패 (용량 초과 가능성)', e); }
 }
 function clearCampCache() {
   localStorage.removeItem(CAMP_CACHE_KEY);
@@ -464,19 +428,36 @@ const DO_FOCUS = {
 };
 
 /* ══ fetch 프록시 ══ */
+const PROXIES = [
+  u => u,                                                                    // 직접 (GitHub Pages 등)
+  u => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,                // corsproxy 새 형식
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,                    // corsproxy 구 형식
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,       // allorigins
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,       // allorigins raw
+  u => `https://proxy.cors.sh/${u}`,                                        // cors.sh
+  u => `https://thingproxy.freeboard.io/fetch/${u}`,                       // thingproxy
+];
+
 async function fx(url) {
+  let lastErr = '';
   for (const mk of PROXIES) {
     try {
-      const r = await fetch(mk(url), {signal:AbortSignal.timeout(7000)});
-      if (!r.ok) continue;
+      const r = await fetch(mk(url), {signal: AbortSignal.timeout(10000)});
+      if (!r.ok) { lastErr = `HTTP ${r.status}`; continue; }
       const txt = await r.text();
+      if (!txt || !txt.trim()) { lastErr = '빈 응답'; continue; }
       try {
         const j = JSON.parse(txt);
-        return j.contents ? JSON.parse(j.contents) : j;
-      } catch { continue; }
-    } catch { continue; }
+        if (j.contents) {
+          try { return JSON.parse(j.contents); } catch { lastErr='contents 파싱 오류'; continue; }
+        }
+        // 정상 응답인지 확인 (고캠핑 API 구조)
+        if (j.response || j.body) return j;
+        return j;
+      } catch { lastErr = 'JSON 파싱 오류'; continue; }
+    } catch(e) { lastErr = e.message || '연결 오류'; continue; }
   }
-  throw new Error('네트워크 오류');
+  throw new Error(`API 연결 실패: ${lastErr}`);
 }
 
 /* ══ 고캠핑 로드 ══ */
@@ -521,32 +502,51 @@ async function loadData() {
     applyFilter();
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
-    console.error(e);
+    console.error('API 오류:', e);
     setAst('● API 오류','demo');
-    toast('API 오류: '+e.message);
-    // 샘플 데이터
-    ALL = SAMPLE;
-    applyFilter(); initMap(); initCharts();
-    setTimeout(renderSigunguLabels,500);
+    // 오류 화면 표시
+    document.getElementById('campList').innerHTML = `
+      <div style="padding:1.5rem 1rem;text-align:center;font-size:12px">
+        <div style="font-size:24px;margin-bottom:8px">⚠️</div>
+        <div style="font-weight:700;color:var(--text);margin-bottom:6px">데이터 로드 실패</div>
+        <div style="color:var(--t3);margin-bottom:10px;line-height:1.7">
+          공개 프록시 서버가 일시적으로<br>불안정한 상태입니다.<br>
+          잠시 후 다시 시도해 주세요.
+        </div>
+        <div style="font-size:10px;color:var(--t3);background:var(--bg3);padding:5px 8px;border-radius:4px;margin-bottom:12px;word-break:break-all">${e.message}</div>
+        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+          <button onclick="clearCampCache();loadData()"
+            style="padding:6px 14px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">
+            🔄 다시 시도
+          </button>
+          <button onclick="useSample()"
+            style="padding:6px 14px;background:var(--bg3);color:var(--t2);border:1px solid var(--bd2);border-radius:6px;font-size:12px;cursor:pointer">
+            샘플 데이터로 보기
+          </button>
+        </div>
+      </div>`;
+    if (!d3svg) { initMap(); initCharts(); setTimeout(renderSigunguLabels,500); }
   }
   setLbar(false);
+}
+
+function useSample() {
+  ALL = SAMPLE;
+  setAst('● 샘플 데이터','demo');
+  applyFilter(); initMap(); initCharts();
+  setTimeout(renderSigunguLabels,500);
 }
 
 function parseItem(it, idx) {
   const lat=parseFloat(it.mapY)||0, lng=parseFloat(it.mapX)||0;
   const dist = lat&&lng ? Math.round(haversine(37.57,126.97,lat,lng)) : 999;
   const fac=[];
-  const sbrs = it.sbrsCl||'';
   if(it.elecAt==='Y') fac.push('전기');
-  // 샤워실: swrmCo>0 또는 sbrsCl에 샤워 포함
-  if(parseInt(it.swrmCo)>0 || sbrs.includes('샤워')) fac.push('샤워실');
-  if(parseInt(it.toiletCo)>0 || sbrs.includes('화장실')) fac.push('화장실');
-  if(parseInt(it.extshrCo)>0 || sbrs.includes('개수대')) fac.push('개수대');
-  if(sbrs.includes('반려') || sbrs.includes('애완')) fac.push('반려동물');
-  if(sbrs.includes('수영') || sbrs.includes('워터파크')) fac.push('수영장');
-  if(sbrs.includes('놀이')) fac.push('놀이터');
-  if(sbrs.includes('매점') || sbrs.includes('편의점')) fac.push('매점');
-  if(sbrs.includes('무선') || sbrs.includes('wifi') || sbrs.includes('Wi-Fi')) fac.push('Wi-Fi');
+  if(parseInt(it.swrmCo)>0) fac.push('샤워실');
+  if(parseInt(it.toiletCo)>0) fac.push('화장실');
+  if(parseInt(it.extshrCo)>0) fac.push('개수대');
+  if((it.sbrsCl||'').includes('반려')) fac.push('반려동물');
+  if((it.sbrsCl||'').includes('수영')) fac.push('수영장');
   return {
     id:String(it.contentId||idx),
     name:it.facltNm||'이름없음',
@@ -558,7 +558,21 @@ function parseItem(it, idx) {
     sites:it.gnrlSiteCo||it.autoSiteCo||'?',
     img:it.firstImageUrl||'',
     siteUrl:it.siteUrl||'',
-    rain:null, // 선택 시 로드
+    // 고캠핑 추가 필드
+    tel:it.tel||'',
+    resveUrl:it.resveUrl||'',
+    resveCl:it.resveCl||'',
+    // 문광연(한국문화관광연구원) 데이터
+    bizrno:it.bizrno||'',
+    manageSttus:it.manageSttus||'',
+    hvofBgnde:it.hvofBgnde||'',
+    hvofEnddle:it.hvofEnddle||'',
+    createdtime:it.createdtime||'',
+    modifiedtime:it.modifiedtime||'',
+    featureNm:it.featureNm||'',
+    lineIntro:it.lineIntro||'',
+    animalCmgCl:it.animalCmgCl||'',
+    rain:null,
   };
 }
 
@@ -581,32 +595,39 @@ function _applyFilter() {
   const txt=document.getElementById('sinput').value.trim().toLowerCase();
   const sort=document.getElementById('sortSel').value;
 
-  // ── 필터 매핑 (고캠핑 API 실제 필드값 대응) ──────────
-  // lctCl 실제값: "강", "계곡", "바다", "숲", "산" 등
-  // induty 실제값: "오토캠핑", "일반야영", "글램핑", "카라반" 등
-  // sbrsCl 실제값: "전기,개수대,화장실,샤워장,반려동물..." 포함 여부
+  // ── 환경 필터 매핑 (API lctCl 실제값 대응) ──────────
+  const ENV_MAP = {
+    '계곡': ['계곡'],
+    '바다': ['바다', '해변', '바닷가'],
+    '강/호수': ['강', '호수'],
+    '숲/산': ['숲', '산'],
+  };
+  // 유형 필터 매핑 (API induty 실제값 대응)
+  const TYPE_MAP = {
+    '오토캠핑': ['오토캠핑'],
+    '글램핑':   ['글램핑'],
+    '카라반':   ['카라반'],
+    '일반야영': ['일반야영'],
+  };
 
   FILTERED = ALL.filter(c=>{
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
     for(const f of chips){
-      // 날씨 조건
       if(f==='주말적합' && (c.rain||50)>=30) return false;
-      // 유형 필터 — induty 포함 여부
-      if(['오토캠핑','글램핑','카라반','일반야영'].includes(f)) {
-        if(!c.types.some(t=>t.includes(f))) return false;
+      // 유형 필터
+      if(TYPE_MAP[f] !== undefined) {
+        const keys = TYPE_MAP[f];
+        if(!c.types.some(t => keys.some(k => t.includes(k)))) return false;
       }
-      // 환경 필터 — lctCl 포함 여부 (단어 매핑)
-      if(f==='계곡' && !c.env.some(e=>e.includes('계곡'))) return false;
-      if(f==='바다' && !c.env.some(e=>e.includes('바다')||e.includes('해변')||e.includes('해수욕'))) return false;
-      if(f==='강/호수' && !c.env.some(e=>e.includes('강')||e.includes('호수')||e.includes('하천')||e.includes('저수지'))) return false;
-      if(f==='숲/산' && !c.env.some(e=>e.includes('숲')||e.includes('산')||e.includes('forest'))) return false;
-      // 시설 필터 — fac 배열 포함 여부
-      if(f==='전기' && !c.fac.includes('전기')) return false;
-      if(f==='샤워실' && !c.fac.includes('샤워실')) return false;
-      if(f==='반려동물' && !c.fac.includes('반려동물')) return false;
-      if(f==='수영장' && !c.fac.includes('수영장')) return false;
+      // 환경 필터
+      if(ENV_MAP[f] !== undefined) {
+        const keys = ENV_MAP[f];
+        if(!c.env.some(e => keys.some(k => e.includes(k)))) return false;
+      }
+      // 시설 필터
+      if(['전기','샤워실','반려동물','수영장'].includes(f)&&!c.fac.includes(f)) return false;
     }
     return true;
   });
@@ -997,11 +1018,11 @@ function parseKma(data){
 }
 function wxVariance(data,src){
   if(!data||src==='기상청')return data;
-  const v=src==='weather.com'?3:5;
+  const v=src==='웨더닷컴'?3:5;
   return data.map((d,i)=>({...d,
     rain:Math.max(0,Math.min(95,d.rain+(i%2?v:-v))),
-    hi:(d.hi||15)+(src==='AccuWeather'?1:0),
-    lo:(d.lo||7)+(src==='weather.com'?-1:0)
+    hi:(d.hi||15)+(src==='아큐웨더'?1:0),
+    lo:(d.lo||7)+(src==='웨더닷컴'?-1:0)
   })).map(d=>({...d,icon:d.rain>50?'🌧':d.rain>30?'⛅':'☀'}));
 }
 
@@ -1060,6 +1081,9 @@ function renderDetail(c,wx,loading=false){
   document.getElementById('dempty').style.display='none';
   document.getElementById('dcontent').style.display='block';
   const w=wx||[];
+
+  // ── 사이드바 날씨 패널 동시 업데이트 ──
+  renderSbWeather(c, w, loading);
   const w1=w.slice(0,7),w2=w.slice(7,14);
   const isToday=(d,i)=>i===0;
   const wdH=(days,offset=0)=>days.map((d,i)=>{
@@ -1130,25 +1154,6 @@ function renderDetail(c,wx,loading=false){
         <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(c.name+' 캠핑장')}" target="_blank" class="link-btn" style="background:#E3F2FD;color:#0D47A1">🔍 네이버</a>
       </div>
     </div>
-    <div class="wsec">
-      <div class="wshdr">
-        <div class="wstitle">14일 날씨 예보</div>
-        <div class="srcbtns">
-          <button class="srcbtn${wxSrc==='기상청'?' on':''}" onclick="switchWx('기상청',this)">기상청</button>
-          <button class="srcbtn${wxSrc==='weather.com'?' on':''}" onclick="switchWx('weather.com',this)">weather.com</button>
-          <button class="srcbtn${wxSrc==='AccuWeather'?' on':''}" onclick="switchWx('AccuWeather',this)">AccuWeather</button>
-        </div>
-      </div>
-      <div style="font-size:9px;color:var(--t3);margin-bottom:4px">
-        ${loading?'<span style="color:#BA7517">⏳ 날씨 로드 중...</span>':wxCache[c.id]?'<span style="color:#1D9E75;font-weight:600">● 기상청 실시간 (3일+추정11일)</span>':'<span style="color:#888">● 위치 기반 추정</span>'}
-        — ${wxSrc}
-      </div>
-      ${loading||!w1.length?'<div style="padding:1rem;text-align:center;color:var(--t3);font-size:11px">날씨 데이터 로드 중...</div>':`
-      <div class="wklabel">이번 주</div>
-      <div class="wgrid">${wdH(w1,0)}</div>
-      <div class="wklabel">다음 주</div>
-      <div class="wgrid">${wdH(w2,7)}</div>`}
-    </div>
     <div class="igrid">
       <div class="iitem"><div class="ik">주말 강수</div><div class="iv" style="color:${sc}">${rain}%</div></div>
       <div class="iitem"><div class="ik">서울 거리</div><div class="iv">${c.dist<900?c.dist+'km':'미상'}</div></div>
@@ -1159,8 +1164,112 @@ function renderDetail(c,wx,loading=false){
     <div class="nbsec">
       <div class="nbtitle">같은 지역 캠핑장</div>
       ${nearby.length?nearby.map(x=>`<div class="nbi" onclick="selectCamp('${x.id}')"><span>${x.name}</span><span style="font-size:10px;color:var(--t3)">${x.siNm}</span></div>`).join(''):'<div style="color:var(--t3);font-size:11px;padding:5px 0">없음</div>'}
+    </div>
+
+    <!-- 문광연(한국문화관광연구원) + 고캠핑 데이터 -->
+    <div style="padding:10px 12px;border-top:1px solid var(--bd)">
+      <div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:7px">
+        📋 캠핑장 등록 정보
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px">
+        \${c.createdtime?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">최초 등록일</div><div style="font-weight:600">'+c.createdtime.slice(0,10)+'</div></div>':''}
+        \${c.modifiedtime?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">최종 수정일</div><div style="font-weight:600">'+c.modifiedtime.slice(0,10)+'</div></div>':''}
+        \${c.bizrno?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">사업자등록번호</div><div style="font-weight:600">'+c.bizrno+'</div></div>':''}
+        \${c.manageSttus?'<div style="background:'+(c.manageSttus.includes('폐업')||c.manageSttus.includes('휴업')?'var(--rl)':'var(--tl)')+'};border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">운영 상태</div><div style="font-weight:700;color:'+(c.manageSttus.includes('폐업')?'var(--red)':c.manageSttus.includes('휴업')?'var(--amber)':'var(--teal)')+'">'+c.manageSttus+'</div></div>':''}
+        \${c.tel?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">전화번호</div><div style="font-weight:600"><a href=\"tel:'+c.tel+'\" style=\"color:var(--blue);text-decoration:none\">'+c.tel+'</a></div></div>':''}
+        \${c.resveCl?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">예약 방법</div><div style="font-weight:600">'+c.resveCl+'</div></div>':''}
+        \${(c.hvofBgnde&&c.hvofEnddle)?'<div style="background:var(--al);border-radius:5px;padding:6px 8px;grid-column:span 2"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">휴장 기간</div><div style="font-weight:600;color:var(--amber)">'+c.hvofBgnde+' ~ '+c.hvofEnddle+'</div></div>':''}
+        \${c.animalCmgCl?'<div style="background:var(--bg3);border-radius:5px;padding:6px 8px"><div style="font-size:9px;color:var(--t3);margin-bottom:2px">반려동물 동반</div><div style="font-weight:600">'+c.animalCmgCl+'</div></div>':''}
+      </div>
+      \${c.lineIntro?'<div style=\"margin-top:7px;padding:7px 9px;background:var(--tl);border-radius:5px;font-size:11px;color:var(--td);line-height:1.6\">"'+c.lineIntro+'"</div>':''}
+      \${c.featureNm?'<div style=\"margin-top:5px;font-size:10px;color:var(--t3);line-height:1.6\">'+c.featureNm+'</div>':''}
+    </div>
+
+    <!-- 데이터 출처 그룹 -->
+    <div style="padding:8px 12px;border-top:1px solid var(--bd);background:var(--bg3)">
+      <div style="font-size:10px;font-weight:700;color:var(--t2);margin-bottom:5px">📌 데이터 출처</div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--t3)">
+        <span>🟢 캠핑장 등록정보 · 한국문화관광연구원 「관광지식정보시스템」</span>
+        <span>🔵 위치·시설·예약 · 한국관광공사 고캠핑 API (data.go.kr)</span>
+        <span>🟡 날씨 예보 · 기상청 단기예보 API</span>
+        <span>⚫ 이동 패턴 · 서울 데이터허브 (data.seoul.go.kr)</span>
+           </div>
     </div>`;
 }
+
+/* ══ 사이드바 날씨 패널 렌더 ══ */
+function renderSbWeather(c, w, loading) {
+  const el = document.getElementById('sbWeather');
+  if (!el) return;
+
+  // 패널 스타일 초기화
+  el.style.cssText = 'flex:1;overflow-y:auto;border-bottom:1px solid var(--bd);min-height:0;display:block;padding:0';
+
+  if (loading || !w.length) {
+    el.innerHTML = `
+      <div style="padding:1.5rem 1rem;text-align:center;color:var(--t3);font-size:12px">
+        <div style="font-size:24px;margin-bottom:6px">⏳</div>
+        <div style="font-weight:600;color:var(--t2);margin-bottom:4px">${c.name}</div>
+        <div>날씨 불러오는 중...</div>
+      </div>`;
+    return;
+  }
+
+  const today = w[0];
+  const rain = c.rain ?? today?.rain ?? 0;
+  const rainCol = rain>=40?'var(--red)':rain>=20?'var(--amber)':'var(--teal)';
+  const w1 = w.slice(0,7), w2 = w.slice(7,14);
+
+  // 우측 상세패널과 동일한 날씨 카드
+  const wdH = (days, offset=0) => days.map((d,i) => {
+    const cls = [d.wknd?'wknd':'', d.rain>=40?'rainy':'', offset+i===0?'today':''].filter(Boolean).join(' ');
+    return `<div class="wd ${cls}">
+      <div class="wdn">${d.dow}</div>
+      <div class="wdd" style="font-size:7px;color:var(--t3)">${d.date}</div>
+      <div class="wdi">${d.icon}</div>
+      <div class="wdh">${d.hi??'?'}°</div>
+      <div class="wdl">${d.lo??'?'}°</div>
+      <div class="wdr" style="color:${(d.rain||0)>=40?'var(--red)':'var(--t3)'}">${d.rain??'?'}%</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="wsec">
+      <div class="wshdr">
+        <div class="wstitle">
+          <span style="font-size:12px;font-weight:700;color:var(--text)">${c.name}</span>
+          <span style="font-size:10px;color:var(--t3);margin-left:6px">${c.doNm} ${c.siNm}</span>
+        </div>
+      </div>
+      <!-- 날씨 출처 버튼 5개 -->
+      <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px">
+        <button class="srcbtn${sbWxSrc==='기상청'?' on':''}" onclick="switchSbWx('기상청',this,'${c.id}')">기상청</button>
+        <button class="srcbtn${sbWxSrc==='아큐웨더'?' on':''}" onclick="switchSbWx('아큐웨더',this,'${c.id}')">아큐웨더</button>
+        <button class="srcbtn${sbWxSrc==='웨더닷컴'?' on':''}" onclick="switchSbWx('웨더닷컴',this,'${c.id}')">웨더닷컴</button>
+        <button class="srcbtn${sbWxSrc==='웨더뉴스'?' on':''}" onclick="switchSbWx('웨더뉴스',this,'${c.id}')">웨더뉴스</button>
+        <button class="srcbtn${sbWxSrc==='윈디'?' on':''}" onclick="switchSbWx('윈디',this,'${c.id}')">윈디</button>
+      </div>
+      <div style="font-size:9px;color:var(--t3);margin-bottom:6px">
+        ● ${sbWxSrc==='기상청'?'기상청 실시간':'예보 출처: '+sbWxSrc} (단기 3일+추정 11일)
+      </div>
+      <div class="wklabel">이번 주</div>
+      <div class="wgrid">${wdH(w1,0)}</div>
+      <div class="wklabel">다음 주</div>
+      <div class="wgrid">${wdH(w2,7)}</div>
+    </div>`;
+}
+
+let sbWxSrc = '기상청';
+
+function switchSbWx(src, btn, campId) {
+  sbWxSrc = src;
+  const c = ALL.find(x=>String(x.id)===String(campId));
+  if (!c) return;
+  const base = wxCache[String(campId)];
+  renderSbWeather(c, wxVariance(base, src), false);
+}
+
+
 
 function switchWx(src,btn){
   wxSrc=src;
