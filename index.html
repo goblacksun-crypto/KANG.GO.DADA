@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- Version: v5.18 | Deployed: 2026-04-27 17:36:35 -->
-<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.18 -->
+<!-- Version: v5.9 | Deployed: 2026-04-27 17:44:19 -->
+<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -114,8 +114,11 @@ select:focus{border-color:var(--teal)}
 .pb.g{background:#1D9E75}.pb.g::after{border-top-color:#1D9E75}
 .pb.y{background:#BA7517}.pb.y::after{border-top-color:#BA7517}
 .pb.r{background:#E24B4A}.pb.r::after{border-top-color:#E24B4A}
-.pb.fav{outline:2.5px solid #fff;box-shadow:0 0 0 1.5px var(--teal),0 2px 8px rgba(0,0,0,.3)}.pb.fav::after{}
-
+.pb.fav{background:#c0392b}.pb.fav::after{border-top-color:#c0392b}
+.mleg{position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd)}
+.mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.mleg div:last-child{margin-bottom:0}
+.ldot{width:9px;height:9px;border-radius:50%}
 .mctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px}
 .mcbtn{width:30px;height:30px;background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .mcbtn:hover{background:var(--bg3)}
@@ -253,10 +256,29 @@ a.link-btn{display:inline-flex}
         <button class="sr" onclick="resetSearch()">✕</button>
       </div>
     </div>
-    <!-- 선택된 캠핑장 날씨 패널 -->
-    <div id="sbWeather" style="flex:1;overflow-y:auto;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;padding:1.5rem 1rem;color:var(--t3);font-size:12px;text-align:center">
-      <div style="font-size:28px;opacity:.2">🌤</div>
-      <div>캠핑장을 선택하면<br>날씨 예보가 표시됩니다</div>
+    <div class="chips">
+      <span class="clabel">유형</span>
+      <div class="crow">
+        <div class="chip" data-f="오토캠핑" onclick="toggleChip(this)">오토캠핑</div>
+        <div class="chip" data-f="글램핑" onclick="toggleChip(this)">글램핑</div>
+        <div class="chip" data-f="카라반" onclick="toggleChip(this)">카라반</div>
+        <div class="chip" data-f="일반야영" onclick="toggleChip(this)">일반야영</div>
+      </div>
+      <span class="clabel">환경</span>
+      <div class="crow">
+        <div class="chip" data-f="계곡" onclick="toggleChip(this)">계곡</div>
+        <div class="chip" data-f="바다" onclick="toggleChip(this)">바다</div>
+        <div class="chip" data-f="강/호수" onclick="toggleChip(this)">강/호수</div>
+        <div class="chip" data-f="숲/산" onclick="toggleChip(this)">숲/산</div>
+      </div>
+      <span class="clabel">시설</span>
+      <div class="crow">
+        <div class="chip" data-f="전기" onclick="toggleChip(this)">전기</div>
+        <div class="chip" data-f="샤워실" onclick="toggleChip(this)">샤워실</div>
+        <div class="chip" data-f="반려동물" onclick="toggleChip(this)">반려동물</div>
+        <div class="chip" data-f="수영장" onclick="toggleChip(this)">수영장</div>
+        <div class="chip" data-f="주말적합" onclick="toggleChip(this)">주말적합</div>
+      </div>
     </div>
     <div class="lhdr">
       <span id="listCnt">로드 중...</span>
@@ -289,7 +311,12 @@ a.link-btn{display:inline-flex}
         <div class="pins" id="pinsWrap"></div>
 
         <div class="minfo" id="mapInfo">전국 캠핑장</div>
-
+        <div class="mleg">
+          <div><span class="ldot" style="background:#1D9E75"></span>강수 20% 미만</div>
+          <div><span class="ldot" style="background:#BA7517"></span>20~40%</div>
+          <div><span class="ldot" style="background:#E24B4A"></span>40% 이상</div>
+          <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>
+        </div>
         <div class="srcpanel">
           <b>데이터 출처</b>
           · 한국문화관광연구원 「관광지식정보시스템 캠핑장 데이터」<br>
@@ -343,15 +370,19 @@ const SIGUNGU_LABEL_DATA=[{"nm":"가평","lat":37.831,"lon":127.51},{"nm":"양�
 const SERVICE_KEY = 'ccb3cc259f05430361fe338b5b987215f3e3f2d695d02970edc234f20901db88';
 const GC_BASE = 'https://apis.data.go.kr/B551011/GoCamping';
 const KMA_BASE = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0';
+const PROXIES = [
+  u => u,
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+];
 
 /* ══ 상태 ══ */
-let ALL = [];
-let FILTERED = [];
-let RENDERED_IDS = [];
+let ALL = [];          // 전체 캠핑장
+let FILTERED = [];     // 현재 필터된 목록
+let RENDERED_IDS = []; // 현재 렌더된 ID 목록 (렌더 중복 방지)
 let favs = new Set(JSON.parse(localStorage.getItem('cfavs')||'[]'));
 let chips = new Set();
 let selId = null;
-let selDateIdx = 0; // 0=오늘, 1=내일, 2=모레, 3=이번주말, 4=다음주말
 
 /* ══ 캠핑장 데이터 캐시 (24시간, 압축 저장) ══ */
 const CAMP_CACHE_KEY = 'camping_all_v3'; // v3: 기존 캐시 자동 무효화
@@ -433,17 +464,10 @@ const DO_FOCUS = {
 };
 
 /* ══ fetch 프록시 ══ */
-const PROXIES = [
-  u => u,
-  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-  u => `https://proxy.cors.sh/${u}`,
-];
-
 async function fx(url) {
   for (const mk of PROXIES) {
     try {
-      const r = await fetch(mk(url), {signal:AbortSignal.timeout(8000)});
+      const r = await fetch(mk(url), {signal:AbortSignal.timeout(7000)});
       if (!r.ok) continue;
       const txt = await r.text();
       try {
@@ -452,7 +476,7 @@ async function fx(url) {
       } catch { continue; }
     } catch { continue; }
   }
-  throw new Error('네트워크 오류 — 잠시 후 다시 시도해 주세요');
+  throw new Error('네트워크 오류');
 }
 
 /* ══ 고캠핑 로드 ══ */
@@ -486,7 +510,6 @@ async function loadData() {
       const items = res?.response?.body?.items?.item;
       if (!items) continue;
       const arr = Array.isArray(items)?items:[items];
-      if (p===1) debugPrintSample(arr); // 첫 페이지 샘플 콘솔 출력
       ALL.push(...arr.map(parseItem));
       setAst(`● ${ALL.length.toLocaleString()}/${total.toLocaleString()}`,'live');
       // 첫 배치 즉시 표시
@@ -498,118 +521,44 @@ async function loadData() {
     applyFilter();
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
-    console.error('고캠핑 API 오류:', e);
-    setAst('● API 연결 실패','demo');
-
-    // 오류 원인 분류
-    let errMsg = e.message || '알 수 없는 오류';
-    let hint = '';
-    if (errMsg.includes('모든 프록시')) {
-      hint = 'CORS 프록시가 일시적으로 불안정합니다.\n잠시 후 새로고침해 주세요.';
-    } else if (errMsg.includes('키 오류')) {
-      hint = 'API 키가 만료됐거나 승인 대기 중입니다.\ndata.go.kr에서 키를 확인해 주세요.';
-    } else {
-      hint = '네트워크 연결을 확인하고 새로고침해 주세요.';
-    }
-
-    document.getElementById('campList').innerHTML = `
-      <div style="padding:1.5rem 1rem;text-align:center;color:var(--t3);font-size:12px">
-        <div style="font-size:24px;margin-bottom:8px">⚠️</div>
-        <div style="font-weight:600;color:var(--text2);margin-bottom:6px">데이터 로드 실패</div>
-        <div style="margin-bottom:10px;line-height:1.7">${hint}</div>
-        <div style="font-size:10px;color:var(--t3);margin-bottom:12px">${errMsg}</div>
-        <button onclick="clearCampCache();loadData()"
-          style="padding:6px 16px;background:var(--teal);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;margin-right:6px">
-          🔄 다시 시도
-        </button>
-        <button onclick="useDemo()"
-          style="padding:6px 16px;background:var(--bg3);color:var(--t2);border:1px solid var(--bd2);border-radius:6px;font-size:12px;cursor:pointer">
-          샘플 데이터로 보기
-        </button>
-      </div>`;
-
-    // 샘플 지도는 표시
-    if (!d3svg) { initMap(); initCharts(); }
+    console.error(e);
+    setAst('● API 오류','demo');
+    toast('API 오류: '+e.message);
+    // 샘플 데이터
+    ALL = SAMPLE;
+    applyFilter(); initMap(); initCharts();
+    setTimeout(renderSigunguLabels,500);
   }
   setLbar(false);
-}
-
-function useDemo() {
-  ALL = SAMPLE;
-  setAst('● 샘플 데이터','demo');
-  applyFilter(); initMap(); initCharts();
-  setTimeout(renderSigunguLabels,500);
-}
-
-// 디버그: 첫 로드 시 실제 API 값 콘솔 출력
-let _debugPrinted = false;
-function debugPrintSample(items) {
-  if (_debugPrinted) return;
-  _debugPrinted = true;
-  console.group('🏕 고캠핑 API 실제 데이터 샘플 (첫 3개)');
-  items.slice(0,3).forEach((it,i) => {
-    console.log(`[${i}] ${it.facltNm}`);
-    console.log('  induty(유형):', JSON.stringify(it.induty));
-    console.log('  lctCl(환경):', JSON.stringify(it.lctCl));
-    console.log('  sbrsCl(시설):', JSON.stringify(it.sbrsCl));
-    console.log('  animalCmgCl(반려동물):', JSON.stringify(it.animalCmgCl));
-    console.log('  elecAt(전기):', JSON.stringify(it.elecAt));
-  });
-  console.groupEnd();
 }
 
 function parseItem(it, idx) {
   const lat=parseFloat(it.mapY)||0, lng=parseFloat(it.mapX)||0;
   const dist = lat&&lng ? Math.round(haversine(37.57,126.97,lat,lng)) : 999;
   const fac=[];
-  const sbrs = (it.sbrsCl||'').toLowerCase();
-  const animalCl = (it.animalCmgCl||'').toLowerCase(); // 반려동물 전용 필드
-
+  const sbrs = it.sbrsCl||'';
   if(it.elecAt==='Y') fac.push('전기');
+  // 샤워실: swrmCo>0 또는 sbrsCl에 샤워 포함
   if(parseInt(it.swrmCo)>0 || sbrs.includes('샤워')) fac.push('샤워실');
   if(parseInt(it.toiletCo)>0 || sbrs.includes('화장실')) fac.push('화장실');
   if(parseInt(it.extshrCo)>0 || sbrs.includes('개수대')) fac.push('개수대');
-  // 반려동물: animalCmgCl 필드 또는 sbrsCl 포함
-  if(animalCl.includes('가능') || animalCl==='가능' ||
-     sbrs.includes('반려') || sbrs.includes('애완') || sbrs.includes('동반')) fac.push('반려동물');
+  if(sbrs.includes('반려') || sbrs.includes('애완')) fac.push('반려동물');
   if(sbrs.includes('수영') || sbrs.includes('워터파크')) fac.push('수영장');
   if(sbrs.includes('놀이')) fac.push('놀이터');
   if(sbrs.includes('매점') || sbrs.includes('편의점')) fac.push('매점');
-
-  // induty 실제값 정규화 (예: "일반야영지" → "일반야영", "자동차야영장" → "오토캠핑")
-  const rawTypes = (it.induty||'일반야영');
-  const types = rawTypes.split(',').map(s=>{
-    s = s.trim();
-    if(s.includes('오토') || s.includes('자동차')) return '오토캠핑';
-    if(s.includes('글램핑')) return '글램핑';
-    if(s.includes('카라반')) return '카라반';
-    if(s.includes('야영') || s.includes('캠핑')) return '일반야영';
-    return s;
-  });
-
-  // lctCl 정규화 (예: "강변" → "강/호수", "숲속" → "숲/산")
-  const rawEnv = (it.lctCl||'');
-  const env = rawEnv.split(',').map(s=>{
-    s = s.trim();
-    if(s.includes('강') || s.includes('호수') || s.includes('하천') || s.includes('저수지') || s.includes('수변')) return '강/호수';
-    if(s.includes('바다') || s.includes('해변') || s.includes('해수욕')) return '바다';
-    if(s.includes('계곡')) return '계곡';
-    if(s.includes('숲') || s.includes('산') || s.includes('고원')) return '숲/산';
-    return s;
-  }).filter(Boolean);
-
+  if(sbrs.includes('무선') || sbrs.includes('wifi') || sbrs.includes('Wi-Fi')) fac.push('Wi-Fi');
   return {
     id:String(it.contentId||idx),
     name:it.facltNm||'이름없음',
     doNm:it.doNm||'', siNm:it.sigunguNm||'',
     addr:it.addr1||'', lat, lng, dist,
-    types, env, fac,
-    season:it.operPdCl||'연중',
+    types:(it.induty||'일반야영').split(',').map(s=>s.trim()),
+    env:(it.lctCl||'').split(',').map(s=>s.trim()).filter(Boolean),
+    fac, season:it.operPdCl||'연중',
     sites:it.gnrlSiteCo||it.autoSiteCo||'?',
     img:it.firstImageUrl||'',
     siteUrl:it.siteUrl||'',
-    animalCmgCl:it.animalCmgCl||'', // 원본 보관
-    rain:null,
+    rain:null, // 선택 시 로드
   };
 }
 
@@ -846,11 +795,17 @@ function renderPins(){
   const wrap=document.getElementById('pinsWrap');
   const W=wrap.offsetWidth||800, H=wrap.offsetHeight||600;
   const visIds=new Set(FILTERED.map(c=>c.id));
+  const MAX_PINS=300;
+
+  // 줌 레벨에 따라 표시 밀도 조절
   const zoom_k=d3tf.k||1;
-  const showLimit=zoom_k>3?300:zoom_k>1.5?150:80;
+  const showLimit=zoom_k>3?MAX_PINS:zoom_k>1.5?150:80;
+
+  // 현재 표시할 캠핑장 (viewport 내 + 필터)
   const toShow=FILTERED.filter(c=>c.lat&&c.lng&&visIds.has(c.id)).slice(0,showLimit);
   const toShowIds=new Set(toShow.map(c=>c.id));
 
+  // 기존 핀 중 안 보여야 할 것 숨기기
   Object.entries(pinNodes).forEach(([id,el])=>{
     if(!toShowIds.has(id)) el.style.display='none';
   });
@@ -862,30 +817,15 @@ function renderPins(){
       if(pinNodes[c.id]) pinNodes[c.id].style.display='none';
       return;
     }
-    const isFav = favs.has(c.id);
-
-    // 날짜 선택에 따른 강수확률 계산
-    // wxCache에 해당 캠핑장 날씨 데이터가 있으면 selDateIdx 날짜 사용
-    let rain;
-    const wx = wxCache[c.id];
-    if(wx && wx[selDateIdx]) {
-      rain = wx[selDateIdx].rain;
-    } else {
-      // 캐시 없으면 기본값 (시드 기반)
-      rain = c.rain ?? Math.floor(Math.abs(Math.sin(c.lat*100+c.lng))*60);
-    }
-
-    // 강수확률 기반 색상 (찜 여부 무관하게 동일 기준)
-    const rainCls = rain>=40?'r':rain>=20?'y':'g';
-    // 찜한 캠핑장은 같은 색 + 테두리(fav class)로 구분
-    const cls = isFav ? rainCls+' fav' : rainCls;
-
-    // 핀 라벨 — 찜은 ⭐ 아이콘
-    const favMark = isFav ? '⭐ ' : '';
-    const label = favMark +
-      (zoom_k>4 ? c.name : (zoom_k>2 ? c.name.slice(0,8)+(c.name.length>8?'…':'') : c.siNm||c.doNm.slice(0,2)));
+    const isFav=favs.has(c.id);
+    const rain=c.rain??Math.floor(Math.abs(Math.sin(c.lat*100+c.lng))*60);
+    const cls=isFav?'fav':rain>=40?'r':rain>=20?'y':'g';
+    // 핀 이름 (줌 레벨에 따라 축약)
+    const label=(isFav?'♥ ':'')+
+      (zoom_k>4?c.name:(zoom_k>2?c.name.slice(0,8)+(c.name.length>8?'…':''):c.siNm||c.doNm.slice(0,2)));
 
     if(pinNodes[c.id]){
+      // 기존 핀 업데이트
       const el=pinNodes[c.id];
       el.style.left=pos.x.toFixed(1)+'px';
       el.style.top=pos.y.toFixed(1)+'px';
@@ -895,6 +835,7 @@ function renderPins(){
       pb.className='pb '+cls;
       pb.textContent=label;
     } else {
+      // 새 핀 생성
       const el=document.createElement('div');
       el.className='pin'+(selId===c.id?' sel':'');
       el.style.cssText=`left:${pos.x.toFixed(1)}px;top:${pos.y.toFixed(1)}px`;
@@ -930,53 +871,6 @@ function mZoom(f){if(d3svg&&d3zoom)d3svg.transition().duration(250).call(d3zoom.
 function mReset(){
   if(d3svg&&d3zoom)d3svg.transition().duration(400).call(d3zoom.transform,d3.zoomIdentity);
   document.getElementById('mapInfo').textContent='전국 캠핑장';
-}
-
-/* ── 날짜 선택 버튼 초기화 ── */
-function initDateBtns() {
-  const today = new Date();
-  const days = ['일','월','화','수','목','금','토'];
-  const dates = [];
-
-  // 오늘 ~ 13일 후 (14일치)
-  for (let i=0; i<14; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate()+i);
-    const dow = days[d.getDay()];
-    const isWknd = d.getDay()===0||d.getDay()===6;
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    let label = i===0?'오늘':i===1?'내일':`${mm}/${dd}`;
-    dates.push({idx:i, label, dow, isWknd, date:`${mm}/${dd}`});
-  }
-
-  const container = document.getElementById('dateBtns');
-  container.innerHTML = dates.map(d=>`
-    <button onclick="selectDate(${d.idx})" id="datebtn-${d.idx}"
-      style="font-size:9px;padding:2px 6px;border-radius:4px;border:1px solid var(--bd2);
-             background:${d.isWknd?'var(--tl)':'var(--bg2)'};
-             color:${d.isWknd?'var(--td)':'var(--t2)'};
-             cursor:pointer;font-weight:${d.idx===0?700:400};
-             ${d.idx===selDateIdx?'outline:1.5px solid var(--teal);font-weight:700;':''}">
-      <div>${d.label}</div>
-      <div style="font-size:8px;opacity:.7">${d.dow}</div>
-    </button>`).join('');
-}
-
-function selectDate(idx) {
-  selDateIdx = idx;
-  // 버튼 스타일 업데이트
-  document.querySelectorAll('[id^="datebtn-"]').forEach(b=>{
-    const i = parseInt(b.id.replace('datebtn-',''));
-    b.style.outline = i===idx ? '1.5px solid var(--teal)' : 'none';
-    b.style.fontWeight = i===idx ? '700' : '400';
-  });
-  renderPins();
-  const today = new Date();
-  const d = new Date(today);
-  d.setDate(d.getDate()+idx);
-  const label = idx===0?'오늘':idx===1?'내일':`${d.getMonth()+1}/${d.getDate()}(${['일','월','화','수','목','금','토'][d.getDay()]})`;
-  toast(`${label} 강수 예보 표시 중`);
 }
 
 /* ══ 지역 빠른 선택 ══ */
@@ -1162,80 +1056,10 @@ function makeFallbackW(c){
 }
 
 /* ══ 상세 패널 ══ */
-function renderSbWeather(c, w, loading) {
-  const el = document.getElementById('sbWeather');
-  if (!el) return;
-
-  if (loading || !w.length) {
-    el.innerHTML = `
-      <div style="text-align:center;color:var(--t3);font-size:12px;padding:1rem">
-        <div style="font-size:24px;margin-bottom:6px">⏳</div>
-        <div style="font-weight:600;color:var(--text2)">${c.name}</div>
-        <div style="margin-top:4px">날씨 불러오는 중...</div>
-      </div>`;
-    return;
-  }
-
-  const today = w[0];
-  const rain = c.rain ?? today?.rain ?? 0;
-  const rainCol = rain>=40?'var(--red)':rain>=20?'var(--amber)':'var(--teal)';
-  const w1 = w.slice(0,7), w2 = w.slice(7,14);
-  const DAYS=['일','월','화','수','목','금','토'];
-
-  const wdMini = (days, offset=0) => days.map((d,i) => {
-    const isWknd = d.wknd;
-    const isTod = offset+i===0;
-    return `<div style="text-align:center;padding:4px 2px;border-radius:4px;
-      background:${isTod?'var(--teal-l)':isWknd?'var(--bg3)':'transparent'};
-      ${isTod?'border:1px solid var(--teal)':'border:1px solid transparent'}">
-      <div style="font-size:9px;font-weight:600;color:${isWknd?'var(--teal-d)':'var(--t3)'}">${d.dow}</div>
-      <div style="font-size:8px;color:var(--t3)">${d.date}</div>
-      <div style="font-size:14px;line-height:1.4">${d.icon}</div>
-      <div style="font-size:10px;font-weight:600;color:#c0392b">${d.hi??'?'}°</div>
-      <div style="font-size:10px;color:var(--blue)">${d.lo??'?'}°</div>
-      <div style="font-size:9px;color:${(d.rain||0)>=40?'var(--red)':'var(--t3)'}">${d.rain??'?'}%</div>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = `
-    <div style="padding:10px 12px;border-bottom:1px solid var(--bd)">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--text)">${c.name}</div>
-          <div style="font-size:10px;color:var(--t3);margin-top:1px">${c.doNm} ${c.siNm}${c.dist<900?' · '+c.dist+'km':''}</div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:22px;line-height:1">${today?.icon||'🌤'}</div>
-          <div style="font-size:12px;font-weight:700;color:${rainCol}">${rain}%</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;font-size:11px">
-        <span style="color:var(--t3)">오늘</span>
-        <span style="font-weight:600;color:#c0392b">${today?.hi??'?'}°</span>
-        <span style="color:var(--blue)">${today?.lo??'?'}°</span>
-        <span style="color:var(--t3);margin-left:auto">${c.season}</span>
-      </div>
-    </div>
-
-    <div style="padding:8px 10px;border-bottom:1px solid var(--bd)">
-      <div style="font-size:10px;color:var(--t3);margin-bottom:5px;font-weight:600">이번 주</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${wdMini(w1,0)}</div>
-    </div>
-    <div style="padding:8px 10px">
-      <div style="font-size:10px;color:var(--t3);margin-bottom:5px;font-weight:600">다음 주</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${wdMini(w2,7)}</div>
-    </div>`;
-}
-
-
 function renderDetail(c,wx,loading=false){
   document.getElementById('dempty').style.display='none';
   document.getElementById('dcontent').style.display='block';
   const w=wx||[];
-
-  // ── 사이드바 날씨 패널 업데이트 ──────────────────────
-  renderSbWeather(c, w, loading);
-  // ────────────────────────────────────────────────────
   const w1=w.slice(0,7),w2=w.slice(7,14);
   const isToday=(d,i)=>i===0;
   const wdH=(days,offset=0)=>days.map((d,i)=>{
@@ -1404,7 +1228,6 @@ const SAMPLE=[
 
 /* ══ 시작 ══ */
 document.addEventListener('DOMContentLoaded',()=>{
-  initDateBtns();
   loadData();
 });
 </script>
