@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Version: v5.8 | Deployed: 2026-04-27 16:40:38 -->
-<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 -->
+<!-- Version: v5.9 | Deployed: 2026-04-27 16:52:04 -->
+<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>캠핑장 날씨 대시보드</title>
+<title>캠핑장 날씨 대시보드 v5.9</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -205,6 +205,7 @@ a.link-btn{display:inline-flex}
   <div class="hdr-r">
     <span style="font-size:11px;color:var(--t3);margin-right:4px">제작: <b style="color:var(--text)">강고다다</b></span>
     <span class="ast live" id="ast">● 연결 중...</span>
+    <button onclick="clearCampCache()" title="캐시 삭제 후 최신 데이터 재로드" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg3);color:var(--t2);cursor:pointer;flex-shrink:0">↺ 새로고침</button>
     <span class="htag" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
     <span class="htag" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
     <span class="htag" style="background:var(--al);color:var(--amber)">기상청</span>
@@ -382,6 +383,55 @@ let RENDERED_IDS = []; // 현재 렌더된 ID 목록 (렌더 중복 방지)
 let favs = new Set(JSON.parse(localStorage.getItem('cfavs')||'[]'));
 let chips = new Set();
 let selId = null;
+
+/* ══ 캠핑장 데이터 캐시 (24시간, 압축 저장) ══ */
+const CAMP_CACHE_KEY = 'camping_all_v3'; // v3: 기존 캐시 자동 무효화
+const CAMP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24시간
+
+// 필수 필드만 배열로 압축 — localStorage 5MB 한계 대응
+function compressItem(c) {
+  return [c.id,c.name,c.doNm,c.siNm,c.addr||'',c.lat,c.lng,c.dist,
+          c.types.join('|'),c.env.join('|'),c.fac.join('|'),
+          c.season||'',c.sites||'?',c.img||'',c.siteUrl||''];
+}
+function decompressItem(a) {
+  return {id:a[0],name:a[1],doNm:a[2],siNm:a[3],addr:a[4],
+    lat:a[5],lng:a[6],dist:a[7],
+    types:a[8]?a[8].split('|'):[],
+    env:a[9]?a[9].split('|'):[],
+    fac:a[10]?a[10].split('|'):[],
+    season:a[11],sites:a[12],img:a[13],siteUrl:a[14],rain:null};
+}
+function getCampCache() {
+  try {
+    const raw = localStorage.getItem(CAMP_CACHE_KEY);
+    if (!raw) return null;
+    const {ts, data} = JSON.parse(raw);
+    if (Date.now() - ts > CAMP_CACHE_TTL) { localStorage.removeItem(CAMP_CACHE_KEY); return null; }
+    // 압축 데이터(배열)면 복원, 아니면 그대로 반환
+    if (data.length && Array.isArray(data[0])) return data.map(decompressItem);
+    return data;
+  } catch { return null; }
+}
+function setCampCache(data) {
+  try {
+    const str = JSON.stringify({ts:Date.now(), data:data.map(compressItem)});
+    localStorage.setItem(CAMP_CACHE_KEY, str);
+    console.log(`✅ 캐시 저장: ${data.length}개, ${(str.length/1024).toFixed(0)}KB`);
+  } catch(e) {
+    try {
+      // 용량 초과시 절반만 저장
+      const half = data.slice(0, Math.floor(data.length/2));
+      localStorage.setItem(CAMP_CACHE_KEY, JSON.stringify({ts:Date.now(), data:half.map(compressItem)}));
+      console.warn(`⚠ 용량 초과 — ${half.length}개만 캐시 저장`);
+    } catch(e2) { console.warn('캐시 저장 실패:', e2); }
+  }
+}
+function clearCampCache() {
+  localStorage.removeItem(CAMP_CACHE_KEY);
+  toast('캐시 삭제 — 데이터를 새로 불러옵니다');
+  loadData();
+}
 let wxSrc = '기상청';
 let wxCache = {};      // id → w14 배열
 let d3svg=null, d3proj=null, d3zoom=null, d3tf=d3.zoomIdentity;
@@ -433,6 +483,19 @@ async function fx(url) {
 async function loadData() {
   setLbar(true);
   setAst('● 연결 중...','demo');
+
+  // ── 캐시 확인 ──────────────────────────────────────
+  const cached = getCampCache();
+  if (cached && cached.length > 0) {
+    ALL = cached;
+    setAst(`● ${ALL.length.toLocaleString()}개 (캐시)`,'live');
+    applyFilter(); initMap(); initCharts();
+    setTimeout(renderSigunguLabels, 200);
+    setLbar(false);
+    return;
+  }
+  // ───────────────────────────────────────────────────
+
   try {
     const first = await fx(`${GC_BASE}/basedList?serviceKey=${SERVICE_KEY}&numOfRows=1&pageNo=1&MobileOS=ETC&MobileApp=CW&_type=json`);
     const total = parseInt(first?.response?.body?.totalCount||0);
@@ -454,6 +517,7 @@ async function loadData() {
       else if (p%2===0) applyFilter(); // 2페이지마다 갱신
     }
     setAst(`● ${ALL.length.toLocaleString()}개 완료`,'live');
+    setCampCache(ALL); // ── 캐시 저장 ──
     applyFilter();
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
@@ -472,12 +536,17 @@ function parseItem(it, idx) {
   const lat=parseFloat(it.mapY)||0, lng=parseFloat(it.mapX)||0;
   const dist = lat&&lng ? Math.round(haversine(37.57,126.97,lat,lng)) : 999;
   const fac=[];
+  const sbrs = it.sbrsCl||'';
   if(it.elecAt==='Y') fac.push('전기');
-  if(parseInt(it.swrmCo)>0) fac.push('샤워실');
-  if(parseInt(it.toiletCo)>0) fac.push('화장실');
-  if(parseInt(it.extshrCo)>0) fac.push('개수대');
-  if((it.sbrsCl||'').includes('반려')) fac.push('반려동물');
-  if((it.sbrsCl||'').includes('수영')) fac.push('수영장');
+  // 샤워실: swrmCo>0 또는 sbrsCl에 샤워 포함
+  if(parseInt(it.swrmCo)>0 || sbrs.includes('샤워')) fac.push('샤워실');
+  if(parseInt(it.toiletCo)>0 || sbrs.includes('화장실')) fac.push('화장실');
+  if(parseInt(it.extshrCo)>0 || sbrs.includes('개수대')) fac.push('개수대');
+  if(sbrs.includes('반려') || sbrs.includes('애완')) fac.push('반려동물');
+  if(sbrs.includes('수영') || sbrs.includes('워터파크')) fac.push('수영장');
+  if(sbrs.includes('놀이')) fac.push('놀이터');
+  if(sbrs.includes('매점') || sbrs.includes('편의점')) fac.push('매점');
+  if(sbrs.includes('무선') || sbrs.includes('wifi') || sbrs.includes('Wi-Fi')) fac.push('Wi-Fi');
   return {
     id:String(it.contentId||idx),
     name:it.facltNm||'이름없음',
@@ -512,15 +581,32 @@ function _applyFilter() {
   const txt=document.getElementById('sinput').value.trim().toLowerCase();
   const sort=document.getElementById('sortSel').value;
 
+  // ── 필터 매핑 (고캠핑 API 실제 필드값 대응) ──────────
+  // lctCl 실제값: "강", "계곡", "바다", "숲", "산" 등
+  // induty 실제값: "오토캠핑", "일반야영", "글램핑", "카라반" 등
+  // sbrsCl 실제값: "전기,개수대,화장실,샤워장,반려동물..." 포함 여부
+
   FILTERED = ALL.filter(c=>{
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
     for(const f of chips){
+      // 날씨 조건
       if(f==='주말적합' && (c.rain||50)>=30) return false;
-      if(['오토캠핑','글램핑','카라반','일반야영'].includes(f)&&!c.types.some(t=>t.includes(f))) return false;
-      if(['계곡','바다','강/호수','숲/산'].includes(f)&&!c.env.some(e=>e.includes(f.replace('강/호수','강').replace('강/호수','호수'))||e===f)) return false;
-      if(['전기','샤워실','반려동물','수영장'].includes(f)&&!c.fac.includes(f)) return false;
+      // 유형 필터 — induty 포함 여부
+      if(['오토캠핑','글램핑','카라반','일반야영'].includes(f)) {
+        if(!c.types.some(t=>t.includes(f))) return false;
+      }
+      // 환경 필터 — lctCl 포함 여부 (단어 매핑)
+      if(f==='계곡' && !c.env.some(e=>e.includes('계곡'))) return false;
+      if(f==='바다' && !c.env.some(e=>e.includes('바다')||e.includes('해변')||e.includes('해수욕'))) return false;
+      if(f==='강/호수' && !c.env.some(e=>e.includes('강')||e.includes('호수')||e.includes('하천')||e.includes('저수지'))) return false;
+      if(f==='숲/산' && !c.env.some(e=>e.includes('숲')||e.includes('산')||e.includes('forest'))) return false;
+      // 시설 필터 — fac 배열 포함 여부
+      if(f==='전기' && !c.fac.includes('전기')) return false;
+      if(f==='샤워실' && !c.fac.includes('샤워실')) return false;
+      if(f==='반려동물' && !c.fac.includes('반려동물')) return false;
+      if(f==='수영장' && !c.fac.includes('수영장')) return false;
     }
     return true;
   });
