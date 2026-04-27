@@ -204,6 +204,7 @@ a.link-btn{display:inline-flex}
   <div class="hdr-r">
     <span style="font-size:11px;color:var(--t3);margin-right:4px">제작: <b style="color:var(--text)">강고다다</b></span>
     <span class="ast live" id="ast">● 연결 중...</span>
+    <button onclick="clearCampCache()" title="캐시 삭제 후 최신 데이터 재로드" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg3);color:var(--t2);cursor:pointer;flex-shrink:0">↺ 새로고침</button>
     <span class="htag" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
     <span class="htag" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
     <span class="htag" style="background:var(--al);color:var(--amber)">기상청</span>
@@ -381,6 +382,28 @@ let RENDERED_IDS = []; // 현재 렌더된 ID 목록 (렌더 중복 방지)
 let favs = new Set(JSON.parse(localStorage.getItem('cfavs')||'[]'));
 let chips = new Set();
 let selId = null;
+
+/* ══ 캠핑장 데이터 캐시 (24시간) ══ */
+const CAMP_CACHE_KEY = 'camping_all_v2';
+const CAMP_CACHE_TTL = 24 * 60 * 60 * 1000; // 24시간
+function getCampCache() {
+  try {
+    const raw = localStorage.getItem(CAMP_CACHE_KEY);
+    if (!raw) return null;
+    const {ts, data} = JSON.parse(raw);
+    if (Date.now() - ts > CAMP_CACHE_TTL) { localStorage.removeItem(CAMP_CACHE_KEY); return null; }
+    return data;
+  } catch { return null; }
+}
+function setCampCache(data) {
+  try { localStorage.setItem(CAMP_CACHE_KEY, JSON.stringify({ts: Date.now(), data})); }
+  catch(e) { console.warn('캐시 저장 실패 (용량 초과 가능성)', e); }
+}
+function clearCampCache() {
+  localStorage.removeItem(CAMP_CACHE_KEY);
+  toast('캐시 삭제 — 데이터를 새로 불러옵니다');
+  loadData();
+}
 let wxSrc = '기상청';
 let wxCache = {};      // id → w14 배열
 let d3svg=null, d3proj=null, d3zoom=null, d3tf=d3.zoomIdentity;
@@ -432,6 +455,19 @@ async function fx(url) {
 async function loadData() {
   setLbar(true);
   setAst('● 연결 중...','demo');
+
+  // ── 캐시 확인 ──────────────────────────────────────
+  const cached = getCampCache();
+  if (cached && cached.length > 0) {
+    ALL = cached;
+    setAst(`● ${ALL.length.toLocaleString()}개 (캐시)`,'live');
+    applyFilter(); initMap(); initCharts();
+    setTimeout(renderSigunguLabels, 200);
+    setLbar(false);
+    return;
+  }
+  // ───────────────────────────────────────────────────
+
   try {
     const first = await fx(`${GC_BASE}/basedList?serviceKey=${SERVICE_KEY}&numOfRows=1&pageNo=1&MobileOS=ETC&MobileApp=CW&_type=json`);
     const total = parseInt(first?.response?.body?.totalCount||0);
@@ -453,6 +489,7 @@ async function loadData() {
       else if (p%2===0) applyFilter(); // 2페이지마다 갱신
     }
     setAst(`● ${ALL.length.toLocaleString()}개 완료`,'live');
+    setCampCache(ALL); // ── 캐시 저장 ──
     applyFilter();
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
@@ -511,14 +548,38 @@ function _applyFilter() {
   const txt=document.getElementById('sinput').value.trim().toLowerCase();
   const sort=document.getElementById('sortSel').value;
 
+  // ── 환경 필터 매핑 (API lctCl 실제값 대응) ──────────
+  const ENV_MAP = {
+    '계곡': ['계곡'],
+    '바다': ['바다', '해변', '바닷가'],
+    '강/호수': ['강', '호수'],
+    '숲/산': ['숲', '산'],
+  };
+  // 유형 필터 매핑 (API induty 실제값 대응)
+  const TYPE_MAP = {
+    '오토캠핑': ['오토캠핑'],
+    '글램핑':   ['글램핑'],
+    '카라반':   ['카라반'],
+    '일반야영': ['일반야영'],
+  };
+
   FILTERED = ALL.filter(c=>{
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
     for(const f of chips){
       if(f==='주말적합' && (c.rain||50)>=30) return false;
-      if(['오토캠핑','글램핑','카라반','일반야영'].includes(f)&&!c.types.some(t=>t.includes(f))) return false;
-      if(['계곡','바다','강/호수','숲/산'].includes(f)&&!c.env.some(e=>e.includes(f.replace('강/호수','강').replace('강/호수','호수'))||e===f)) return false;
+      // 유형 필터
+      if(TYPE_MAP[f] !== undefined) {
+        const keys = TYPE_MAP[f];
+        if(!c.types.some(t => keys.some(k => t.includes(k)))) return false;
+      }
+      // 환경 필터
+      if(ENV_MAP[f] !== undefined) {
+        const keys = ENV_MAP[f];
+        if(!c.env.some(e => keys.some(k => e.includes(k)))) return false;
+      }
+      // 시설 필터
       if(['전기','샤워실','반려동물','수영장'].includes(f)&&!c.fac.includes(f)) return false;
     }
     return true;
