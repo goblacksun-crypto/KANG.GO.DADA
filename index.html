@@ -1,5 +1,5 @@
-#안정버전
 <!DOCTYPE html>
+<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -20,40 +20,17 @@
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
 button{font-family:inherit;cursor:pointer}
 
-/* ── 레이아웃 (PC 기본) ── */
-.app { display: flex; flex-direction: column; height: 100vh; }
-.hdr { background: var(--bg2); border-bottom: 1px solid var(--bd); padding: 0 14px; display: flex; align-items: center; gap: 10px; height: 50px; flex-shrink: 0; }
-.main { display: flex; flex: 1; overflow: hidden; }
-
-/* ── 모바일 반응형 코드 ── */
-@media (max-width: 768px) {
-  body { overflow: auto !important; height: auto !important; }
-  .app { height: auto !important; display: block !important; }
-  .main { 
-    display: flex !important; 
-    flex-direction: column !important; /* 세로로 나열 */
-    height: auto !important;
-    overflow: visible !important;
-  }
-  .sb { 
-    width: 100% !important; 
-    order: 1 !important; /* 1번: 검색창/목록 */
-    border-right: none !important;
-    border-bottom: 1px solid var(--bd) !important;
-  }
-  .detail { 
-    width: 100% !important; 
-    order: 2 !important; /* 2번: 상세정보(사진/날씨) */
-    border-left: none !important;
-    border-top: 1px solid var(--bd) !important;
-  }
-  .center { 
-    width: 100% !important; 
-    height: 400px !important; 
-    order: 3 !important; /* 3번: 지도 (가장 아래로) */
-    flex: none !important;
-  }
-}
+/* ── 레이아웃 ── */
+.app{display:flex;flex-direction:column;height:100vh}
+.hdr{background:var(--bg2);border-bottom:1px solid var(--bd);padding:0 14px;display:flex;align-items:center;gap:10px;height:50px;flex-shrink:0}
+.logo{font-size:15px;font-weight:700;color:var(--teal);white-space:nowrap}
+.logo em{font-style:normal;font-weight:400;font-size:11px;color:var(--t3);margin-left:5px}
+.hdr-r{display:flex;gap:6px;align-items:center;margin-left:auto}
+.htag{font-size:10px;padding:2px 7px;border-radius:4px}
+.ast{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
+.ast.live{background:var(--tl);color:var(--td)}
+.ast.demo{background:var(--bg3);color:var(--t2)}
+.main{display:flex;flex:1;overflow:hidden}
 
 /* ── 사이드바 ── */
 .sb{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
@@ -223,7 +200,9 @@ a.link-btn{display:inline-flex}
 <div class="app">
 <div class="hdr">
   <div class="logo">⛺ 캠핑장 날씨 대시보드 <em>서울 빅데이터 활용 경진대회</em></div>
+  <div style="font-size:12px;color:#fff;background:var(--teal);padding:3px 10px;border-radius:99px;font-weight:700;white-space:nowrap;flex-shrink:0">강고다다</div>
   <div class="hdr-r">
+    <span style="font-size:11px;color:var(--t3);margin-right:4px">제작: <b style="color:var(--text)">강고다다</b></span>
     <span class="ast live" id="ast">● 연결 중...</span>
     <span class="htag" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
     <span class="htag" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
@@ -533,9 +512,6 @@ function _applyFilter() {
   const sort=document.getElementById('sortSel').value;
 
   FILTERED = ALL.filter(c=>{
-    if (txt && !c.name.toLowerCase().includes(txt) && !c.addr.toLowerCase().includes(txt)) {
-      return false; 
-    }
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
