@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<!-- Version: v5.9 | Deployed: 2026-04-27 16:52:04 -->
-<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
+<!-- Version: v5.10 | Deployed: 2026-04-27 17:07:11 -->
+<!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.10 -->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -510,6 +510,7 @@ async function loadData() {
       const items = res?.response?.body?.items?.item;
       if (!items) continue;
       const arr = Array.isArray(items)?items:[items];
+      if (p===1) debugPrintSample(arr); // 첫 페이지 샘플 콘솔 출력
       ALL.push(...arr.map(parseItem));
       setAst(`● ${ALL.length.toLocaleString()}/${total.toLocaleString()}`,'live');
       // 첫 배치 즉시 표시
@@ -532,33 +533,75 @@ async function loadData() {
   setLbar(false);
 }
 
+// 디버그: 첫 로드 시 실제 API 값 콘솔 출력
+let _debugPrinted = false;
+function debugPrintSample(items) {
+  if (_debugPrinted) return;
+  _debugPrinted = true;
+  console.group('🏕 고캠핑 API 실제 데이터 샘플 (첫 3개)');
+  items.slice(0,3).forEach((it,i) => {
+    console.log(`[${i}] ${it.facltNm}`);
+    console.log('  induty(유형):', JSON.stringify(it.induty));
+    console.log('  lctCl(환경):', JSON.stringify(it.lctCl));
+    console.log('  sbrsCl(시설):', JSON.stringify(it.sbrsCl));
+    console.log('  animalCmgCl(반려동물):', JSON.stringify(it.animalCmgCl));
+    console.log('  elecAt(전기):', JSON.stringify(it.elecAt));
+  });
+  console.groupEnd();
+}
+
 function parseItem(it, idx) {
   const lat=parseFloat(it.mapY)||0, lng=parseFloat(it.mapX)||0;
   const dist = lat&&lng ? Math.round(haversine(37.57,126.97,lat,lng)) : 999;
   const fac=[];
-  const sbrs = it.sbrsCl||'';
+  const sbrs = (it.sbrsCl||'').toLowerCase();
+  const animalCl = (it.animalCmgCl||'').toLowerCase(); // 반려동물 전용 필드
+
   if(it.elecAt==='Y') fac.push('전기');
-  // 샤워실: swrmCo>0 또는 sbrsCl에 샤워 포함
   if(parseInt(it.swrmCo)>0 || sbrs.includes('샤워')) fac.push('샤워실');
   if(parseInt(it.toiletCo)>0 || sbrs.includes('화장실')) fac.push('화장실');
   if(parseInt(it.extshrCo)>0 || sbrs.includes('개수대')) fac.push('개수대');
-  if(sbrs.includes('반려') || sbrs.includes('애완')) fac.push('반려동물');
+  // 반려동물: animalCmgCl 필드 또는 sbrsCl 포함
+  if(animalCl.includes('가능') || animalCl==='가능' ||
+     sbrs.includes('반려') || sbrs.includes('애완') || sbrs.includes('동반')) fac.push('반려동물');
   if(sbrs.includes('수영') || sbrs.includes('워터파크')) fac.push('수영장');
   if(sbrs.includes('놀이')) fac.push('놀이터');
   if(sbrs.includes('매점') || sbrs.includes('편의점')) fac.push('매점');
-  if(sbrs.includes('무선') || sbrs.includes('wifi') || sbrs.includes('Wi-Fi')) fac.push('Wi-Fi');
+
+  // induty 실제값 정규화 (예: "일반야영지" → "일반야영", "자동차야영장" → "오토캠핑")
+  const rawTypes = (it.induty||'일반야영');
+  const types = rawTypes.split(',').map(s=>{
+    s = s.trim();
+    if(s.includes('오토') || s.includes('자동차')) return '오토캠핑';
+    if(s.includes('글램핑')) return '글램핑';
+    if(s.includes('카라반')) return '카라반';
+    if(s.includes('야영') || s.includes('캠핑')) return '일반야영';
+    return s;
+  });
+
+  // lctCl 정규화 (예: "강변" → "강/호수", "숲속" → "숲/산")
+  const rawEnv = (it.lctCl||'');
+  const env = rawEnv.split(',').map(s=>{
+    s = s.trim();
+    if(s.includes('강') || s.includes('호수') || s.includes('하천') || s.includes('저수지') || s.includes('수변')) return '강/호수';
+    if(s.includes('바다') || s.includes('해변') || s.includes('해수욕')) return '바다';
+    if(s.includes('계곡')) return '계곡';
+    if(s.includes('숲') || s.includes('산') || s.includes('고원')) return '숲/산';
+    return s;
+  }).filter(Boolean);
+
   return {
     id:String(it.contentId||idx),
     name:it.facltNm||'이름없음',
     doNm:it.doNm||'', siNm:it.sigunguNm||'',
     addr:it.addr1||'', lat, lng, dist,
-    types:(it.induty||'일반야영').split(',').map(s=>s.trim()),
-    env:(it.lctCl||'').split(',').map(s=>s.trim()).filter(Boolean),
-    fac, season:it.operPdCl||'연중',
+    types, env, fac,
+    season:it.operPdCl||'연중',
     sites:it.gnrlSiteCo||it.autoSiteCo||'?',
     img:it.firstImageUrl||'',
     siteUrl:it.siteUrl||'',
-    rain:null, // 선택 시 로드
+    animalCmgCl:it.animalCmgCl||'', // 원본 보관
+    rain:null,
   };
 }
 
