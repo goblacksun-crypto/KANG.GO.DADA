@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.32 | Deployed: 2026-04-28 18:40:03 -->
+<!-- Version: v5.33 | Deployed: 2026-04-28 21:15:21 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -238,6 +238,9 @@ a.link-btn{display:inline-flex}
 .tl-slider{flex:1;accent-color:var(--teal);cursor:pointer;height:3px}
 .tl-date{font-size:10px;color:var(--teal);white-space:nowrap;min-width:55px;text-align:right;font-weight:600}
 .tl-today-badge{font-size:9px;padding:1px 6px;border-radius:99px;background:var(--tl);color:var(--td);margin-left:4px;font-weight:600}
+.wx-mode-btns{display:flex;gap:4px;flex-shrink:0}
+.wx-mode-btn{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
+.wx-mode-btn.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
 
 /* ── 서울 실시간 대기질 섹션 ── */
 .seoul-air-sec{padding:10px 12px;border-top:1px solid var(--bd);background:linear-gradient(135deg,#f0f9ff 0%,#e8f5f0 100%)}
@@ -359,6 +362,7 @@ a.link-btn{display:inline-flex}
         <button class="sr" onclick="resetSearch()">✕</button>
       </div>
     </div>
+    <div id="sbSeoulAir" style="display:none;flex:none;overflow:hidden;border-bottom:1px solid var(--bd);padding:8px 12px;font-size:11px"></div>
     <div id="sbWx" class="wsec" style="flex:none;overflow:hidden;border-bottom:1px solid var(--bd)">
       <div style="padding:8px 12px;text-align:center;color:var(--t3);font-size:11px;display:flex;align-items:center;gap:6px;justify-content:center">
         <span style="font-size:16px;opacity:.3">🌤</span>
@@ -416,6 +420,10 @@ a.link-btn{display:inline-flex}
           <input type="range" class="tl-slider" id="tlSlider" min="0" max="13" value="0"
             oninput="onTimelineChange(parseInt(this.value))">
           <div class="tl-date" id="tlDate">2주 예보 탐색</div>
+          <div class="wx-mode-btns">
+            <button id="wxModeRain" class="wx-mode-btn on" onclick="setMapWeatherMode('rain')">🌧 우천</button>
+            <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
+          </div>
         </div>
         <div class="mctrl">
           <button class="mcbtn" onclick="mZoom(1.4)">+</button>
@@ -655,6 +663,7 @@ const SEOUL_AIR_TTL = 5 * 60 * 1000; // 5분 캐시
 
 /* ── 타임라인 ── */
 let tlDayIdx = 0;              // 현재 슬라이더 날짜 오프셋 (0=오늘)
+let mapWeatherMode = 'rain';   // 'rain' | 'wind'
 
 /* ══ 상태 ══ */
 let ALL = [];          // 전체 캠핑장
@@ -743,20 +752,20 @@ const DO_FOCUS = {
   '서울특별시':{lat:37.57,lng:127.0,sc:9},'부산광역시':{lat:35.2,lng:129.0,sc:8},
 };
 
-/* ══ fetch 프록시 ══ */
+/* ══ fetch 프록시 (병렬 Promise.any) ══ */
 async function fx(url) {
-  for (const mk of PROXIES) {
-    try {
-      const r = await fetch(mk(url), {signal:AbortSignal.timeout(7000)});
-      if (!r.ok) continue;
-      const txt = await r.text();
-      try {
-        const j = JSON.parse(txt);
-        return j.contents ? JSON.parse(j.contents) : j;
-      } catch { continue; }
-    } catch { continue; }
+  const attempts = PROXIES.map(async mk => {
+    const r = await fetch(mk(url), {signal: AbortSignal.timeout(6000)});
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const txt = await r.text();
+    const j = JSON.parse(txt);
+    return j.contents ? JSON.parse(j.contents) : j;
+  });
+  try {
+    return await Promise.any(attempts);
+  } catch {
+    throw new Error('네트워크 오류');
   }
-  throw new Error('네트워크 오류');
 }
 
 /* ══ 고캠핑 로드 ══ */
@@ -771,7 +780,7 @@ async function loadData() {
     setAst(`● ${ALL.length.toLocaleString()}개 (캐시)`,'live');
     applyFilter(); initMap(); initCharts();
     setTimeout(renderSigunguLabels, 200);
-    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows) renderPins(); }),1500);
+    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows){ renderPins(); renderSbSeoulAir(); } }),1500);
     setLbar(false);
     return;
   }
@@ -802,7 +811,7 @@ async function loadData() {
     setCampCache(ALL);
     applyFilter();
     // 서울 대기질 선제 로드 → 지도 핀 PM10 즉시 반영
-    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows) renderPins(); }),1500);
+    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows){ renderPins(); renderSbSeoulAir(); } }),1500);
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
     console.error(e);
@@ -1026,6 +1035,8 @@ function initMap() {
   const zoom=d3.zoom().scaleExtent([0.5,20]).on('zoom',ev=>{
     d3tf=ev.transform;
     g.attr('transform',ev.transform);
+    // 경계선 두께를 줌에 맞게 역보정 — 시각적 일정 유지
+    g.selectAll('.province').attr('stroke-width', 0.4/ev.transform.k);
     // 핀은 rAF 스로틀 — SVG 이동은 즉각, 핀 재배치는 다음 프레임
     if(_pinRaf) cancelAnimationFrame(_pinRaf);
     _pinRaf=requestAnimationFrame(()=>{ _pinRaf=null; renderPins(); });
@@ -1078,13 +1089,25 @@ function renderSigunguLabels(){
   // 줌에 따라 표시
   d3zoom.on('zoom.sigungu',ev=>{
     const k=ev.transform.k;
-    g.selectAll('.sigungu-label')
-      .style('display',k>3?null:'none')
-      .attr('font-size',Math.max(7,Math.min(11,9/k*2.2))+'px')
-      .attr('transform',d=>{
-        const[x,y]=d3proj([d.lon,d.lat]);
-        return `translate(${x*ev.transform.k+ev.transform.x},${y*ev.transform.k+ev.transform.y})`;
+    const labels=g.selectAll('.sigungu-label');
+    if(k<=3){ labels.style('display','none'); return; }
+    const fs=Math.max(7,Math.min(11,9/k*2.2));
+    // 지리 좌표 기준 최소 거리 필터 — 겹침 방지
+    const minDeg = k>8 ? 0.08 : k>5 ? 0.15 : 0.25;
+    const shown=[];
+    labels.each(function(d){
+      const[x,y]=d3proj([d.lon,d.lat]);
+      const tooClose=shown.some(s=>{
+        const dx=s.lon-d.lon, dy=s.lat-d.lat;
+        return Math.sqrt(dx*dx+dy*dy)<minDeg;
       });
+      if(tooClose){ d3.select(this).style('display','none'); return; }
+      shown.push(d);
+      d3.select(this)
+        .style('display',null)
+        .attr('font-size',fs+'px')
+        .attr('transform',`translate(${x*ev.transform.k+ev.transform.x},${y*ev.transform.k+ev.transform.y})`);
+    });
   });
 }
 
@@ -1105,8 +1128,22 @@ function renderPins(){
   const zoom_k=d3tf.k||1;
   const showLimit=zoom_k>3?MAX_PINS:zoom_k>1.5?150:80;
 
-  // 현재 표시할 캠핑장 (viewport 내 + 필터)
-  const toShow=FILTERED.filter(c=>c.lat&&c.lng&&visIds.has(c.id)).slice(0,showLimit);
+  // 그리드 기반 공간 중복 제거 — 줌 레벨에 따라 셀 크기 조정
+  const cellSize = zoom_k > 6 ? 40 : zoom_k > 3 ? 70 : zoom_k > 1.5 ? 110 : 180;
+  const gridCells = new Set();
+  const spatialFilter = c => {
+    const pos = latlng2px(c.lat, c.lng);
+    if (!pos) return false;
+    const cx = Math.floor(pos.x / cellSize);
+    const cy = Math.floor(pos.y / cellSize);
+    const key = `${cx},${cy}`;
+    if (gridCells.has(key)) return false;
+    gridCells.add(key);
+    return true;
+  };
+
+  // 현재 표시할 캠핑장 (viewport 내 + 필터 + 공간 중복 제거)
+  const toShow=FILTERED.filter(c=>c.lat&&c.lng&&visIds.has(c.id)&&spatialFilter(c)).slice(0,showLimit);
   const toShowIds=new Set(toShow.map(c=>c.id));
 
   // 기존 핀 중 안 보여야 할 것 숨기기
@@ -1132,12 +1169,14 @@ function renderPins(){
     const pmStr  = airRow?.PM != null ? ` PM${Math.round(parseFloat(airRow.PM)||0)}` : '';
 
     // 줌 레벨에 따라 라벨 상세도 조절
+    const isWind = mapWeatherMode === 'wind';
+    const valStr = isWind ? `${rain}m/s` : `${rain}%`;
     let label;
     if(zoom_k>4){
-      const nm=c.name.length>6?c.name.slice(0,6)+'…':c.name;
-      label=(isFav?'♥ ':'')+nm+` ${icon}${rain}%`+pmStr;
+      const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name;
+      label=(isFav?'♥ ':'')+nm+` ${icon}${valStr}`+(isWind?'':pmStr);
     } else if(zoom_k>1.8){
-      label=(isFav?'♥ ':'')+`${icon} ${rain}%`+pmStr;
+      label=(isFav?'♥ ':'')+`${icon} ${valStr}`;
     } else {
       label=(isFav?'♥':'')+icon;
     }
@@ -1450,11 +1489,13 @@ function parseKma(data){
     const hi=temps.length?Math.round(Math.max(...temps)):'?';
     const lo=temps.length?Math.round(Math.min(...temps)):'?';
     const rain=Math.max(...Object.values(tm).map(t=>parseInt(t.POP||0)));
+    const wsdVals=Object.values(tm).map(t=>parseFloat(t.WSD||0)).filter(v=>v>0);
+    const wsd=wsdVals.length?Math.round(wsdVals.reduce((a,b)=>a+b,0)/wsdVals.length*10)/10:0;
     const pty=parseInt(noon.PTY||0),sky=parseInt(noon.SKY||1);
     const icon=pty>=1?'🌧':sky>=4?'☁':sky>=3?'⛅':'☀';
     const d=new Date(ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8));
     result.push({dow:DAYS[d.getDay()],date:ds.slice(4,6)+'/'+ds.slice(6,8),
-      wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo});
+      wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo,wsd});
   });
   // 3일→14일 추정 보완
   while(result.length<14){
@@ -1462,11 +1503,12 @@ function parseKma(data){
     const [m,dd]=last.date.split('/').map(Number);
     const nd=new Date(new Date().getFullYear(),m-1,dd+1);
     const rv=Math.max(0,Math.min(95,(last.rain||20)+Math.floor(Math.random()*20-10)));
+    const wv=Math.max(0,Math.round(((last.wsd||2)+Math.random()*2-1)*10)/10);
     result.push({dow:DAYS[nd.getDay()],date:`${String(nd.getMonth()+1).padStart(2,'0')}/${String(nd.getDate()).padStart(2,'0')}`,
       wknd:nd.getDay()===0||nd.getDay()===6,rain:rv,
       icon:rv>50?'🌧':rv>30?'⛅':'☀',
       hi:(last.hi||15)+(Math.floor(Math.random()*4)-2),
-      lo:(last.lo||7)+(Math.floor(Math.random()*4)-2)});
+      lo:(last.lo||7)+(Math.floor(Math.random()*4)-2),wsd:wv});
   }
   return result.slice(0,14);
 }
@@ -1535,11 +1577,12 @@ function makeFallbackW(c){
   return Array.from({length:14},(_,i)=>{
     const d=new Date(today);d.setDate(d.getDate()+i);
     const rv=Math.max(0,Math.min(95,baseRain+(Math.floor(Math.random()*26)-13)));
+    const wv=Math.max(0,Math.round((1+Math.abs(Math.sin(seed+i))*6)*10)/10);
     return{dow:DAYS[d.getDay()],date:`${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`,
       wknd:d.getDay()===0||d.getDay()===6,rain:rv,
       icon:rv>50?'🌧':rv>30?'⛅':'☀',
       hi:15+(Math.floor(seed)%8)+(Math.floor(Math.random()*4)-2),
-      lo:7+(Math.floor(seed)%5)+(Math.floor(Math.random()*4)-2)};
+      lo:7+(Math.floor(seed)%5)+(Math.floor(Math.random()*4)-2),wsd:wv};
   });
 }
 
@@ -1785,12 +1828,24 @@ function initCharts(){
 
 /* ══ 핀 날씨 헬퍼 ══ */
 function getPinWeather(c, dayIdx) {
+  const day = wxCache[c.id]?.[dayIdx];
+  if (mapWeatherMode === 'wind') {
+    let wsd;
+    if (day) {
+      wsd = day.wsd ?? 2;
+    } else {
+      const seed = Math.abs(Math.sin((c.lat||37)*53.1 + (c.lng||127)*29.7 + dayIdx*11.3)) * 10;
+      wsd = Math.round(seed * 10) / 10;
+    }
+    const icon = wsd >= 9 ? '🌬' : wsd >= 5 ? '💨' : '🍃';
+    const cls  = wsd >= 9 ? 'r'  : wsd >= 5 ? 'y'  : 'g';
+    return { rain: wsd, icon, cls, isWind: true };
+  }
   let rain, icon;
-  if (wxCache[c.id] && wxCache[c.id][dayIdx]) {
-    rain = wxCache[c.id][dayIdx].rain;
-    icon = wxCache[c.id][dayIdx].icon;
+  if (day) {
+    rain = day.rain;
+    icon = day.icon;
   } else {
-    // 위치 + 날짜 기반 의사난수 추정 (실제 예보 미로드 시)
     const seed = Math.abs(Math.sin((c.lat||37)*73.1 + (c.lng||127)*37.9 + dayIdx*17.3)) * 100;
     rain = Math.floor(seed) % 60 + 5;
     icon = rain > 50 ? '🌧' : rain > 30 ? '⛅' : '☀';
@@ -1799,11 +1854,64 @@ function getPinWeather(c, dayIdx) {
   return { rain, icon, cls };
 }
 
+function setMapWeatherMode(mode) {
+  mapWeatherMode = mode;
+  document.getElementById('wxModeRain').classList.toggle('on', mode === 'rain');
+  document.getElementById('wxModeWind').classList.toggle('on', mode === 'wind');
+  // 범례 업데이트
+  const leg = document.querySelector('.mleg');
+  if (leg) {
+    if (mode === 'wind') {
+      leg.innerHTML = `
+        <div><span class="ldot" style="background:#1D9E75"></span>약풍 5m/s 미만</div>
+        <div><span class="ldot" style="background:#BA7517"></span>5~9m/s</div>
+        <div><span class="ldot" style="background:#E24B4A"></span>강풍 9m/s 이상</div>
+        <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
+    } else {
+      leg.innerHTML = `
+        <div><span class="ldot" style="background:#1D9E75"></span>강수 20% 미만</div>
+        <div><span class="ldot" style="background:#BA7517"></span>20~40%</div>
+        <div><span class="ldot" style="background:#E24B4A"></span>40% 이상</div>
+        <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
+    }
+  }
+  renderPins();
+}
+
 function getSeoulAirForDistrict(siNm) {
   if (!seoulAirCache?.data) return null;
   return seoulAirCache.data.find(r =>
     r.MSRSTN_NM && (r.MSRSTN_NM === siNm || r.MSRSTN_NM.includes(siNm.replace('구','')))
   ) || null;
+}
+
+function renderSbSeoulAir() {
+  const el = document.getElementById('sbSeoulAir');
+  if (!el || !seoulAirCache?.data?.length) return;
+  // 전체 평균
+  const rows = seoulAirCache.data;
+  const avg = f => {
+    const vals = rows.map(r => parseFloat(r[f])).filter(v => !isNaN(v) && v >= 0);
+    return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : null;
+  };
+  const pm10 = avg('PM'), pm25 = avg('FPM');
+  // 대표 등급 (가장 많이 나온 CAI_GRD)
+  const grades = rows.map(r=>r.CAI_GRD).filter(Boolean);
+  const gradeMap = {};
+  grades.forEach(g=>{ gradeMap[g]=(gradeMap[g]||0)+1; });
+  const topGrade = Object.entries(gradeMap).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+  const gradeColor = {'좋음':'#1D9E75','보통':'#639922','나쁨':'#BA7517','매우나쁨':'#E24B4A'}[topGrade] || '#888';
+  const timeStr = rows[0]?.MSRMT_DT ? rows[0].MSRMT_DT.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})/,'$2/$3 $4:$5') : '';
+  el.style.display = 'block';
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <span style="font-weight:700;color:var(--t1);font-size:12px">🌫 서울 실시간 대기질</span>
+    <span style="background:${gradeColor};color:#fff;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:700">${topGrade}</span>
+  </div>
+  <div style="display:flex;gap:12px;margin-top:5px;font-size:11px;color:var(--t2)">
+    <span>PM10 <b style="color:var(--t1)">${pm10 ?? '--'}</b> μg/m³</span>
+    <span>PM2.5 <b style="color:var(--t1)">${pm25 ?? '--'}</b> μg/m³</span>
+    ${timeStr?`<span style="color:var(--t3);font-size:10px;margin-left:auto">${timeStr}</span>`:''}
+  </div>`;
 }
 
 /* ══ 타임라인 슬라이더 ══ */
