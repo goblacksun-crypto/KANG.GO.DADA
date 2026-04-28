@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.32 | Deployed: 2026-04-28 17:24:58 -->
+<!-- Version: v5.32 | Deployed: 2026-04-28 18:40:03 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -601,7 +601,7 @@ a.link-btn{display:inline-flex}
         <div class="src-api-row"><span class="src-api-key">목적</span><span class="src-api-val">서울 지역 캠핑장 선택 시 해당 자치구의 실시간 미세먼지·대기오염 수치를 상세패널에 추가 제공</span></div>
         <div class="src-api-row"><span class="src-api-key">수집량</span><span class="src-api-val">서울 <strong>25개 자치구 전체</strong> 실시간 1회 호출 → siNm 기준으로 해당 구 데이터 필터링</span></div>
         <div class="src-api-row"><span class="src-api-key">갱신 주기</span><span class="src-api-val">5분 세션 캐시(seoulAirCache) — 5분 내 재선택 시 캐시 반환, 이후 재호출</span></div>
-        <div class="src-api-row"><span class="src-api-key">주요 필드</span><span class="src-api-val">MSRSTE_NM(측정소/구명), PM10(미세먼지 μg/m³), PM25(초미세먼지), NO2, O3, CO, SO2, IDEX_MVL(통합대기지수), IDEX_NM(등급: 좋음/보통/나쁨/매우나쁨)</span></div>
+        <div class="src-api-row"><span class="src-api-key">주요 필드</span><span class="src-api-val">MSRSTN_NM(측정소/구명), SAREA_NM(권역), PM(미세먼지 PM10 μg/m³), FPM(초미세먼지 PM2.5), NTDX(NO₂), OZON(O₃), CBMX(CO), SPDX(SO₂), CAI_IDX(통합대기지수), CAI_GRD(등급), CRST_SBSTN(주요오염물질)</span></div>
         <div class="src-api-row"><span class="src-api-key">연동 조건</span><span class="src-api-val">캠핑장의 <code>doNm === '서울특별시'</code> 인 경우에만 호출 (전국구 서비스 성능 보호)</span></div>
         <div class="src-api-row"><span class="src-api-key">Endpoint</span>
           <span class="src-api-val"><code class="src-api-url">https://openapi.seoul.go.kr:5000/{SEOUL_KEY}/json/RealtimeCityAir/1/25/</code></span>
@@ -645,7 +645,11 @@ const PROXIES = [
 
 /* ── 서울 열린데이터광장 (openAPI.seoul.go.kr) ── */
 const SEOUL_API_KEY = '6f714e544b6772613839746f517356';
-const SEOUL_AIR_URL = `https://openapi.seoul.go.kr:5000/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`;
+// HTTP 8088 (allorigins 프록시 경유) 가 HTTPS 5000보다 안정적
+const SEOUL_AIR_ENDPOINTS = [
+  `http://openAPI.seoul.go.kr:8088/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`,
+  `https://openapi.seoul.go.kr:5000/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`,
+];
 let seoulAirCache = null;      // { ts, data: row[] }
 const SEOUL_AIR_TTL = 5 * 60 * 1000; // 5분 캐시
 
@@ -1125,7 +1129,7 @@ function renderPins(){
 
     // 서울 대기질 보조 정보
     const airRow = c.doNm==='서울특별시' ? getSeoulAirForDistrict(c.siNm) : null;
-    const pmStr  = airRow ? ` PM${Math.round(airRow.PM10||0)}` : '';
+    const pmStr  = airRow?.PM != null ? ` PM${Math.round(parseFloat(airRow.PM)||0)}` : '';
 
     // 줌 레벨에 따라 라벨 상세도 조절
     let label;
@@ -1248,17 +1252,44 @@ async function fetchSeoulAirQuality(siNm) {
   if (seoulAirCache && Date.now() - seoulAirCache.ts < SEOUL_AIR_TTL) {
     return seoulAirCache.data;
   }
-  if (SEOUL_API_KEY === 'YOUR_SEOUL_OPEN_DATA_KEY') return null; // 키 미설정
-  try {
-    const data = await fx(SEOUL_AIR_URL);
-    const rows = data?.RealtimeCityAir?.row || data?.row || [];
-    if (!rows.length) return null;
-    seoulAirCache = { ts: Date.now(), data: rows };
-    return rows;
-  } catch(e) {
-    console.warn('서울 대기질 API 오류:', e);
-    return null;
+
+  // openAPI.seoul.go.kr 전용 프록시 순서:
+  // allorigins 먼저 (서버사이드 → HTTP 8088 접근 가능),
+  // 그 다음 corsproxy, 마지막으로 직접 호출
+  const proxyWrappers = [
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => u,
+  ];
+
+  for (const ep of SEOUL_AIR_ENDPOINTS) {
+    for (const wrap of proxyWrappers) {
+      try {
+        const res = await fetch(wrap(ep), { signal: AbortSignal.timeout(9000) });
+        if (!res.ok) continue;
+        const text = await res.text();
+        let json;
+        try {
+          const tmp = JSON.parse(text);
+          // allorigins 는 { contents: "json-string" } 형식으로 래핑
+          json = tmp.contents ? JSON.parse(tmp.contents) : tmp;
+        } catch { continue; }
+
+        const rows = json?.RealtimeCityAir?.row;
+        if (rows?.length > 0) {
+          console.log(`✅ 서울 대기질 로드 성공 (${ep.includes('8088') ? 'HTTP8088' : 'HTTPS5000'}, ${wrap.toString().includes('allorigins') ? 'allorigins' : wrap.toString().includes('corsproxy') ? 'corsproxy' : '직접'})`);
+          seoulAirCache = { ts: Date.now(), data: rows };
+          return rows;
+        }
+      } catch(e) {
+        console.warn(`서울 대기질 시도 실패:`, wrap(ep).slice(0, 60), e.message);
+        continue;
+      }
+    }
   }
+
+  console.warn('서울 대기질: 모든 경로 실패');
+  return null;
 }
 
 function renderSeoulAirSection(siNm, rows) {
@@ -1266,75 +1297,112 @@ function renderSeoulAirSection(siNm, rows) {
   if (!el) return;
 
   if (!rows) {
-    if (SEOUL_API_KEY === 'YOUR_SEOUL_OPEN_DATA_KEY') {
-      el.innerHTML = `<div class="air-error">⚠ 서울시 API 키가 설정되지 않았습니다.<br><span style="font-size:9px">openAPI.seoul.go.kr에서 키를 발급 후 SEOUL_API_KEY 상수를 교체하세요.</span></div>`;
-    } else {
-      el.innerHTML = `<div class="air-error">⚠ 실시간 대기질 데이터를 불러올 수 없습니다.</div>`;
-    }
+    el.innerHTML = `<div class="air-error">⚠ 실시간 대기질 데이터를 불러올 수 없습니다.<br>
+      <span style="font-size:9px">서울 열린데이터광장 서비스 일시 점검 중일 수 있습니다.</span></div>`;
     el.style.display = 'block';
     return;
   }
 
-  // 해당 자치구 데이터 매칭 (없으면 첫 번째 사용)
-  const row = rows.find(r => r.MSRSTE_NM && r.MSRSTE_NM.includes(siNm.replace('구','')))
-           || rows.find(r => r.MSRSTE_NM === siNm)
+  // 실제 응답 구조 콘솔 확인 (디버깅용 — 필드명·값 형태 파악)
+  console.log('🌍 서울 대기질 원본 (첫 행):', JSON.stringify(rows[0]));
+  console.log('🔑 필드 목록:', Object.keys(rows[0] || {}));
+
+  // 자치구 매칭 — 실제 필드명: MSRSTN_NM
+  const row = rows.find(r => r.MSRSTN_NM && r.MSRSTN_NM.includes(siNm.replace('구','')))
+           || rows.find(r => r.MSRSTN_NM === siNm)
            || rows[0];
   if (!row) return;
 
-  const gradeClass = { '좋음':'grade-good', '보통':'grade-normal', '나쁨':'grade-bad', '매우나쁨':'grade-vbad' };
-  const gradeEmoji = { '좋음':'😊', '보통':'😐', '나쁨':'😷', '매우나쁨':'🚨' };
-  const grade = row.IDEX_NM || '정보없음';
-  const gClass = gradeClass[grade] || 'grade-normal';
-  const gEmoji = gradeEmoji[grade] || '❓';
+  // ── 실제 API 필드명으로 직접 추출 ──────────────────────────
+  // null·"-"·""도 안전하게 처리
+  const fv = v => {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    return (s === '' || s === '-' || s === 'null') ? null : s;
+  };
 
-  function airVal(v, warn, danger) {
-    const n = parseFloat(v);
+  const pm10  = fv(row.PM);           // 미세먼지 PM10
+  const pm25  = fv(row.FPM);          // 초미세먼지 PM2.5
+  const no2   = fv(row.NTDX);         // 이산화질소 NO2
+  const o3    = fv(row.OZON);         // 오존 O3
+  const co    = fv(row.CBMX);         // 일산화탄소 CO
+  const so2   = fv(row.SPDX);         // 아황산가스 SO2
+  const idxNm = fv(row.CAI_GRD) || '정보없음';  // 등급
+  const idxMv = fv(row.CAI_IDX);      // 통합대기지수
+  const stNm  = fv(row.MSRSTN_NM) || siNm;
+  const areaNm = fv(row.SAREA_NM);    // 권역명 (도심권 등)
+  const msrDt = fv(row.MSRMT_DT);     // 측정일시 (202604281700)
+  const mainPollutant = fv(row.CRST_SBSTN); // 주요 오염물질
+
+  const gradeClass = { '좋음':'grade-good','보통':'grade-normal','나쁨':'grade-bad','매우나쁨':'grade-vbad' };
+  const gradeEmoji = { '좋음':'😊','보통':'😐','나쁨':'😷','매우나쁨':'🚨' };
+  const gClass = gradeClass[idxNm] || 'grade-normal';
+  const gEmoji = gradeEmoji[idxNm] || '🌫';
+
+  // 수치 표시: 색상 임계값 적용, null이면 "-" 표시
+  const airSpan = (val, warn, danger, digits = 0) => {
+    if (val === null) return `<span style="color:var(--t3)">-</span>`;
+    const n = parseFloat(val);
     if (isNaN(n)) return `<span style="color:var(--t3)">-</span>`;
     const color = n >= danger ? 'var(--red)' : n >= warn ? 'var(--amber)' : 'var(--teal)';
-    return `<span style="color:${color};font-weight:700">${n}</span>`;
+    return `<span style="color:${color};font-weight:700">${n.toFixed(digits)}</span>`;
+  };
+
+  // 측정 시각 표시 (YYYYMMDDHH 형식)
+  let timeStr = '';
+  if (msrDt && msrDt.length >= 10) {
+    timeStr = `${msrDt.slice(4,6)}/${msrDt.slice(6,8)} ${msrDt.slice(8,10)}시`;
   }
 
   el.innerHTML = `
     <div class="seoul-air-hdr">
       🏙 서울시 실시간 대기환경
-      <span style="font-size:10px;color:var(--t3);margin-left:4px">${row.MSRSTE_NM || siNm}</span>
+      <span style="font-size:10px;color:var(--t3);margin-left:4px">${stNm}</span>
       <span class="seoul-air-source">openAPI.seoul.go.kr</span>
     </div>
     <div class="air-index-bar">
       <span class="air-index-label">통합대기지수</span>
-      <span class="air-index-val">${row.IDEX_MVL ?? '-'}</span>
-      <span class="air-grade ${gClass}">${gEmoji} ${grade}</span>
+      <span class="air-index-val">${idxMv ?? '-'}</span>
+      <span class="air-grade ${gClass}">${gEmoji} ${idxNm}</span>
     </div>
     <div class="air-grid">
       <div class="air-item">
         <div class="air-k">미세먼지 PM10</div>
-        <div class="air-v">${airVal(row.PM10, 80, 150)}<span class="air-unit"> μg/m³</span></div>
+        <div class="air-v">${airSpan(pm10,80,150)}<span class="air-unit"> μg/m³</span></div>
       </div>
       <div class="air-item">
         <div class="air-k">초미세먼지 PM2.5</div>
-        <div class="air-v">${airVal(row.PM25, 35, 75)}<span class="air-unit"> μg/m³</span></div>
+        <div class="air-v">${airSpan(pm25,35,75)}<span class="air-unit"> μg/m³</span></div>
       </div>
       <div class="air-item">
         <div class="air-k">이산화질소 NO₂</div>
-        <div class="air-v">${airVal(row.NO2, 0.1, 0.2)}<span class="air-unit"> ppm</span></div>
+        <div class="air-v">${airSpan(no2,0.1,0.2,3)}<span class="air-unit"> ppm</span></div>
       </div>
       <div class="air-item">
         <div class="air-k">오존 O₃</div>
-        <div class="air-v">${airVal(row.O3, 0.09, 0.15)}<span class="air-unit"> ppm</span></div>
+        <div class="air-v">${airSpan(o3,0.09,0.15,3)}<span class="air-unit"> ppm</span></div>
       </div>
       <div class="air-item">
         <div class="air-k">일산화탄소 CO</div>
-        <div class="air-v">${airVal(row.CO, 9, 15)}<span class="air-unit"> ppm</span></div>
+        <div class="air-v">${airSpan(co,9,15,1)}<span class="air-unit"> ppm</span></div>
       </div>
       <div class="air-item">
         <div class="air-k">아황산가스 SO₂</div>
-        <div class="air-v">${airVal(row.SO2, 0.05, 0.15)}<span class="air-unit"> ppm</span></div>
+        <div class="air-v">${airSpan(so2,0.05,0.15,3)}<span class="air-unit"> ppm</span></div>
       </div>
     </div>
-    <div style="font-size:9px;color:var(--t3);margin-top:6px;text-align:right">
-      측정소: ${row.MSRSTE_NM || '-'} · 서울 열린데이터광장 제공
-    </div>`;
+    <div style="font-size:9px;color:var(--t3);margin-top:6px;display:flex;justify-content:space-between;align-items:center">
+      <button onclick="toggleAirRaw()" style="font-size:9px;padding:1px 7px;border-radius:4px;border:1px solid var(--bd2);background:var(--bg2);cursor:pointer;color:var(--t2)">🔍 원본 확인</button>
+      <span>측정소: ${stNm}${timeStr?' · '+timeStr:''} · 서울 열린데이터광장</span>
+    </div>
+    <pre id="airRawBox" style="display:none;margin-top:6px;padding:8px;background:#1e1e1e;color:#d4d4d4;font-size:9px;border-radius:5px;overflow-x:auto;line-height:1.6;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all">${JSON.stringify(row,null,2)}</pre>`;
   el.style.display = 'block';
+}
+
+function toggleAirRaw() {
+  const b = document.getElementById('airRawBox');
+  if (!b) return;
+  b.style.display = b.style.display === 'none' ? 'block' : 'none';
 }
 
 /* ══ 기상청 날씨 ══ */
@@ -1734,7 +1802,7 @@ function getPinWeather(c, dayIdx) {
 function getSeoulAirForDistrict(siNm) {
   if (!seoulAirCache?.data) return null;
   return seoulAirCache.data.find(r =>
-    r.MSRSTE_NM && (r.MSRSTE_NM === siNm || r.MSRSTE_NM.includes(siNm.replace('구','')))
+    r.MSRSTN_NM && (r.MSRSTN_NM === siNm || r.MSRSTN_NM.includes(siNm.replace('구','')))
   ) || null;
 }
 
