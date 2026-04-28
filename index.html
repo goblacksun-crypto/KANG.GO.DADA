@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.9 | Deployed: 2026-04-27 21:42:09 -->
+<!-- Version: v5.26 | Deployed: 2026-04-28 10:31:59 -->
 <!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
 <html lang="ko">
 <head>
@@ -19,6 +19,30 @@
   --r:10px;--rs:6px
 }
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
+
+/* ── 모바일 반응형 ── */
+@media(max-width:768px){
+  body{overflow:auto;height:auto}
+  .app{height:auto;min-height:100vh}
+  .hdr{height:auto;padding:8px 12px;flex-wrap:wrap;gap:6px}
+  .hdr-r{margin-left:0;width:100%;justify-content:flex-start;flex-wrap:wrap}
+  .hdr-r .htag{font-size:10px}
+  .main{flex-direction:column;overflow:visible;height:auto}
+  .sb{width:100%;max-height:none;border-right:none;border-bottom:1px solid var(--bd)}
+  #sbWx{max-height:320px;overflow-y:auto}
+  .center{height:320px;flex:none}
+  .detail{width:100%;border-left:none;border-top:1px solid var(--bd);overflow-y:visible}
+  #dcontent{overflow-y:visible}
+  .citems{max-height:280px;overflow-y:auto}
+  .region-btns{gap:3px}
+  .rb{font-size:10px;padding:3px 7px}
+  .igrid{grid-template-columns:1fr 1fr}
+  .wgrid{grid-template-columns:repeat(7,1fr)}
+  .facsec .facgrid{gap:3px}
+  .hdr-sub{display:none !important}
+  .hdr-pc{display:none !important}
+  .hdr-r{margin-left:auto}
+}
 button{font-family:inherit;cursor:pointer}
 
 /* ── 레이아웃 ── */
@@ -200,15 +224,14 @@ a.link-btn{display:inline-flex}
 <body>
 <div class="app">
 <div class="hdr">
-  <div class="logo">⛺ 캠핑장 날씨 대시보드 <em>서울 빅데이터 활용 경진대회</em></div>
+  <div class="logo">⛺ 캠핑장 날씨 대시보드 <em class="hdr-sub" style="display:inline">서울 빅데이터 활용 경진대회</em></div>
   <div style="font-size:12px;color:#fff;background:var(--teal);padding:3px 10px;border-radius:99px;font-weight:700;white-space:nowrap;flex-shrink:0">강고다다</div>
   <div class="hdr-r">
-    <span style="font-size:11px;color:var(--t3);margin-right:4px">제작: <b style="color:var(--text)">강고다다</b></span>
     <span class="ast live" id="ast">● 연결 중...</span>
     <button onclick="clearCampCache()" title="캐시 삭제 후 최신 데이터 재로드" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg3);color:var(--t2);cursor:pointer;flex-shrink:0">↺ 새로고침</button>
-    <span class="htag" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
-    <span class="htag" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
-    <span class="htag" style="background:var(--al);color:var(--amber)">기상청</span>
+    <span class="htag hdr-pc" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
+    <span class="htag hdr-pc" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
+    <span class="htag hdr-pc" style="background:var(--al);color:var(--amber)">기상청</span>
   </div>
 </div>
 <div class="lbar" id="lbar"></div>
@@ -256,28 +279,10 @@ a.link-btn{display:inline-flex}
         <button class="sr" onclick="resetSearch()">✕</button>
       </div>
     </div>
-    <div class="chips">
-      <span class="clabel">유형</span>
-      <div class="crow">
-        <div class="chip" data-f="오토캠핑" onclick="toggleChip(this)">오토캠핑</div>
-        <div class="chip" data-f="글램핑" onclick="toggleChip(this)">글램핑</div>
-        <div class="chip" data-f="카라반" onclick="toggleChip(this)">카라반</div>
-        <div class="chip" data-f="일반야영" onclick="toggleChip(this)">일반야영</div>
-      </div>
-      <span class="clabel">환경</span>
-      <div class="crow">
-        <div class="chip" data-f="계곡" onclick="toggleChip(this)">계곡</div>
-        <div class="chip" data-f="바다" onclick="toggleChip(this)">바다</div>
-        <div class="chip" data-f="강/호수" onclick="toggleChip(this)">강/호수</div>
-        <div class="chip" data-f="숲/산" onclick="toggleChip(this)">숲/산</div>
-      </div>
-      <span class="clabel">시설</span>
-      <div class="crow">
-        <div class="chip" data-f="전기" onclick="toggleChip(this)">전기</div>
-        <div class="chip" data-f="샤워실" onclick="toggleChip(this)">샤워실</div>
-        <div class="chip" data-f="반려동물" onclick="toggleChip(this)">반려동물</div>
-        <div class="chip" data-f="수영장" onclick="toggleChip(this)">수영장</div>
-        <div class="chip" data-f="주말적합" onclick="toggleChip(this)">주말적합</div>
+    <div id="sbWx" class="wsec" style="flex:1;overflow-y:auto;min-height:0;border-bottom:1px solid var(--bd)">
+      <div style="padding:1.5rem;text-align:center;color:var(--t3);font-size:12px">
+        <div style="font-size:28px;opacity:.2;margin-bottom:6px">&#127780;</div>
+        <div>캠핑장을 선택하면<br>날씨 예보가 표시됩니다</div>
       </div>
     </div>
     <div class="lhdr">
@@ -1037,6 +1042,12 @@ async function selectCamp(id){
     c.rain=weekend.length?Math.round(weekend.reduce((s,d)=>s+d.rain,0)/weekend.length):wxCache[id][0]?.rain||20;
   }
   renderDetail(c,wxCache[id],false);
+
+  // 모바일: 상세 패널로 자동 스크롤
+  if(window.innerWidth<=768){
+    const detail=document.querySelector('.detail');
+    if(detail) setTimeout(()=>detail.scrollIntoView({behavior:'smooth',block:'start'}),100);
+  }
 }
 
 function makeFallbackW(c){
@@ -1059,6 +1070,7 @@ function makeFallbackW(c){
 function renderDetail(c,wx,loading=false){
   document.getElementById('dempty').style.display='none';
   document.getElementById('dcontent').style.display='block';
+  updateSbWx(c,wx,loading);
   const w=wx||[];
   const w1=w.slice(0,7),w2=w.slice(7,14);
   const isToday=(d,i)=>i===0;
@@ -1130,25 +1142,6 @@ function renderDetail(c,wx,loading=false){
         <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(c.name+' 캠핑장')}" target="_blank" class="link-btn" style="background:#E3F2FD;color:#0D47A1">🔍 네이버</a>
       </div>
     </div>
-    <div class="wsec">
-      <div class="wshdr">
-        <div class="wstitle">14일 날씨 예보</div>
-        <div class="srcbtns">
-          <button class="srcbtn${wxSrc==='기상청'?' on':''}" onclick="switchWx('기상청',this)">기상청</button>
-          <button class="srcbtn${wxSrc==='weather.com'?' on':''}" onclick="switchWx('weather.com',this)">weather.com</button>
-          <button class="srcbtn${wxSrc==='AccuWeather'?' on':''}" onclick="switchWx('AccuWeather',this)">AccuWeather</button>
-        </div>
-      </div>
-      <div style="font-size:9px;color:var(--t3);margin-bottom:4px">
-        ${loading?'<span style="color:#BA7517">⏳ 날씨 로드 중...</span>':wxCache[c.id]?'<span style="color:#1D9E75;font-weight:600">● 기상청 실시간 (3일+추정11일)</span>':'<span style="color:#888">● 위치 기반 추정</span>'}
-        — ${wxSrc}
-      </div>
-      ${loading||!w1.length?'<div style="padding:1rem;text-align:center;color:var(--t3);font-size:11px">날씨 데이터 로드 중...</div>':`
-      <div class="wklabel">이번 주</div>
-      <div class="wgrid">${wdH(w1,0)}</div>
-      <div class="wklabel">다음 주</div>
-      <div class="wgrid">${wdH(w2,7)}</div>`}
-    </div>
     <div class="igrid">
       <div class="iitem"><div class="ik">주말 강수</div><div class="iv" style="color:${sc}">${rain}%</div></div>
       <div class="iitem"><div class="ik">서울 거리</div><div class="iv">${c.dist<900?c.dist+'km':'미상'}</div></div>
@@ -1161,6 +1154,87 @@ function renderDetail(c,wx,loading=false){
       ${nearby.length?nearby.map(x=>`<div class="nbi" onclick="selectCamp('${x.id}')"><span>${x.name}</span><span style="font-size:10px;color:var(--t3)">${x.siNm}</span></div>`).join(''):'<div style="color:var(--t3);font-size:11px;padding:5px 0">없음</div>'}
     </div>`;
 }
+
+let sbWxSrc = '기상청';
+
+function updateSbWx(c,wx,loading){
+  const el = document.getElementById('sbWx');
+  if (!el) return;
+  const w = wx || [];
+  const w1 = w.slice(0,7), w2 = w.slice(7,14);
+  const rain = c.rain ?? 0;
+  const sc = rain<20?'var(--teal)':rain<40?'var(--amber)':'var(--red)';
+  const cid = String(c.id);
+
+  if (loading || !w1.length) {
+    el.innerHTML = '<div style="padding:1rem;text-align:center;color:var(--t3);font-size:11px">'
+      + '<div style="font-weight:600;color:var(--t2);margin-bottom:4px">' + c.name + '</div>'
+      + '&#9203; 날씨 불러오는 중...</div>';
+    return;
+  }
+
+  function wdH(days, offset) {
+    return days.map(function(d,i){
+      var cls = (d.wknd?'wknd ':'')+((d.rain||0)>=40?'rainy ':'')+((offset+i===0)?'today':'');
+      return '<div class="wd ' + cls.trim() + '">'
+        + '<div class="wdn">' + d.dow + '</div>'
+        + '<div class="wdd" style="font-size:7px;color:var(--t3)">' + d.date + '</div>'
+        + '<div class="wdi">' + d.icon + '</div>'
+        + '<div class="wdh">' + (d.hi??'?') + '&#176;</div>'
+        + '<div class="wdl">' + (d.lo??'?') + '&#176;</div>'
+        + '<div class="wdr" style="color:' + ((d.rain||0)>=40?'var(--red)':'var(--t3)') + '">' + (d.rain??'?') + '%</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  var srcHtml = ['기상청','weather.com','AccuWeather'].map(function(s){
+    var on = sbWxSrc===s ? ' on' : '';
+    return '<button class="srcbtn' + on + '" data-src="' + s + '" data-cid="' + cid + '">' + s + '</button>';
+  }).join('');
+
+  var statusHtml = wxCache[cid]
+    ? '<span style="color:#1D9E75;font-weight:600">&#9679; 기상청 실시간 (3일+추정11일)</span>'
+    : '<span style="color:#888">&#9679; 위치 기반 추정</span>';
+
+  el.innerHTML =
+    '<div style="padding:8px 12px;border-bottom:1px solid var(--bd)">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">'
+    + '<div style="font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:6px">' + c.name + '</div>'
+    + '<div style="text-align:center;flex-shrink:0">'
+    + '<div style="font-size:18px;line-height:1">' + (w1[0]?w1[0].icon:'&#127780;') + '</div>'
+    + '<div style="font-size:11px;font-weight:700;color:' + sc + '">' + rain + '%</div>'
+    + '</div></div>'
+    + '<div style="font-size:10px;color:var(--t3)">' + c.doNm + ' ' + c.siNm + (c.dist<900?' &#183; '+c.dist+'km':'') + '</div>'
+    + '</div>'
+    + '<div style="padding:6px 12px;border-bottom:1px solid var(--bd)">'
+    + '<div class="wshdr"><div class="wstitle">14일 날씨 예보</div>'
+    + '<div class="srcbtns">' + srcHtml + '</div></div>'
+    + '<div style="font-size:9px;color:var(--t3);margin-top:4px">' + statusHtml + ' &#8212; ' + sbWxSrc + '</div>'
+    + '</div>'
+    + '<div style="padding:6px 10px;border-bottom:1px solid var(--bd)">'
+    + '<div class="wklabel">이번 주</div>'
+    + '<div class="wgrid">' + wdH(w1,0) + '</div>'
+    + '</div>'
+    + '<div style="padding:6px 10px">'
+    + '<div class="wklabel">다음 주</div>'
+    + '<div class="wgrid">' + wdH(w2,7) + '</div>'
+    + '</div>';
+
+  // 출처 버튼 이벤트 — data-* 방식으로 따옴표 충돌 완전 회피
+  el.querySelectorAll('[data-src]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      sbWxSrc = this.dataset.src;
+      var cId = this.dataset.cid;
+      var camp = ALL.find(function(x){return String(x.id)===cId;});
+      if (!camp) return;
+      var base = wxCache[cId];
+      var varied = wxVariance(base, sbWxSrc);
+      updateSbWx(camp, varied, false);
+    });
+  });
+}
+
+
 
 function switchWx(src,btn){
   wxSrc=src;
