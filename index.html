@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.33 | Deployed: 2026-04-28 21:15:21 -->
+<!-- Version: v5.34 | Deployed: 2026-04-28 21:35:21 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -136,21 +136,35 @@ select:focus{border-color:var(--teal)}
 .mapwrap{flex:1;position:relative;overflow:hidden;background:#a8c8d8}
 #d3map{position:absolute;inset:0;width:100%;height:100%}
 #d3map svg{width:100%;height:100%}
-#d3map .province{fill:#eaf0dd;stroke:#a8c88a;stroke-width:0.4;transition:fill .25s}
+#d3map .province{stroke:#96bb78;stroke-width:0.4;transition:fill .25s}
 #d3map .province-border{display:none}
-#d3map .province:hover{fill:#cfe8ae}
-#d3map .province.hl{fill:#bde094;stroke:#7aaa55;stroke-width:0.6}
-#d3map .sigungu-label{fill:#3a5a30;font-weight:600;pointer-events:none;text-anchor:middle}
-#d3map .do-label{fill:#3a6a28;font-weight:700;pointer-events:none;text-anchor:middle}
+#d3map .province:hover{filter:brightness(.93)}
+#d3map .province.hl{stroke:#5a9940;stroke-width:0.6}
+/* 라벨: paint-order stroke으로 흰 테두리 → 가독성 */
+#d3map .do-label{fill:#1e4d10;font-weight:800;pointer-events:none;text-anchor:middle;
+  paint-order:stroke;stroke:#ffffffd0;stroke-width:3.5px;stroke-linejoin:round}
+#d3map .sigungu-label{fill:#1a3a0e;font-weight:700;pointer-events:none;text-anchor:middle;
+  paint-order:stroke;stroke:#ffffffb8;stroke-width:2.5px;stroke-linejoin:round}
 .pins{position:absolute;inset:0;pointer-events:none}
-.pin{position:absolute;pointer-events:all;cursor:pointer;transform:translate(-50%,-100%);transition:transform .15s;will-change:transform}
-.pin:hover,.pin.sel{transform:translate(-50%,-100%) scale(1.18);z-index:20}
-.pb{padding:3px 7px;border-radius:99px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.25);max-width:120px;overflow:hidden;text-overflow:ellipsis}
-.pb::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);border:4px solid transparent;border-bottom:none}
+.pin{position:absolute;pointer-events:all;cursor:pointer;transform:translate(-50%,-100%);transition:transform .12s;will-change:transform}
+.pin:hover,.pin.sel{transform:translate(-50%,-100%) scale(1.22);z-index:20}
+/* pill 배지 (기본) */
+.pb{padding:3px 7px;border-radius:99px;font-size:10px;font-weight:700;color:#fff;white-space:nowrap;
+  position:relative;box-shadow:0 2px 6px rgba(0,0,0,.3);max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.pb::after{content:'';position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+  border:4px solid transparent;border-bottom:none}
+/* mini 모드 — 아이콘만, 꼬리 제거 */
+.pb.mini{padding:3px 6px;font-size:13px;max-width:34px}
+.pb.mini::after{display:none}
+/* dot 모드 — 8px 원, 꼬리 없음 */
+.pb.dot{width:8px!important;height:8px!important;padding:0!important;border-radius:50%!important;
+  font-size:0!important;max-width:8px!important;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.pb.dot::after{display:none}
 .pb.g{background:#1D9E75}.pb.g::after{border-top-color:#1D9E75}
 .pb.y{background:#BA7517}.pb.y::after{border-top-color:#BA7517}
 .pb.r{background:#E24B4A}.pb.r::after{border-top-color:#E24B4A}
 .pb.fav{background:#c0392b}.pb.fav::after{border-top-color:#c0392b}
+.pb.dot.g,.pb.dot.y,.pb.dot.r,.pb.dot.fav{border:1.5px solid rgba(255,255,255,.7)}
 .mleg{position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd)}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
@@ -1022,91 +1036,113 @@ function toggleFav(e,id){
 }
 
 /* ══ D3 지도 ══ */
+// 시도별 채우기 색 — 지역 구분감 부여
+const PROV_COLORS = {
+  '서울특별시':'#ddeee4','경기도':'#e3f0da','인천광역시':'#dce8f5',
+  '강원특별자치도':'#e6f2d4','충청북도':'#f0ecd4','충청남도':'#edf0d6',
+  '대전광역시':'#e6efda','세종특별자치시':'#d8f5ec','전라북도':'#f0e6d2',
+  '전라남도':'#e6f0dc','광주광역시':'#ddeeda','경상북도':'#f0ece0',
+  '경상남도':'#e6efd6','부산광역시':'#dce6f5','대구광역시':'#e6e2ef',
+  '울산광역시':'#ddeee8','제주특별자치도':'#d6eef5',
+};
+
 function initMap() {
   if(d3svg) return;
   const W=document.getElementById('d3map').offsetWidth||600;
   const H=document.getElementById('d3map').offsetHeight||500;
   const svg=d3.select('#d3map').append('svg');
+  // g: zoom-transform 받는 지도 패스 그룹
   const g=svg.append('g').attr('id','mapG');
+  // gLabel: zoom-transform 밖 오버레이 — 라벨이 확대 시 커지지 않음
+  const gLabel=svg.append('g').attr('id','labelG');
   const proj=d3.geoMercator().center([128.0,36.5]).scale(Math.min(W,H)*5.2).translate([W/2,H/2]);
   d3proj=proj; d3svg=svg;
   const path=d3.geoPath().projection(proj);
+
   let _pinRaf=null;
   const zoom=d3.zoom().scaleExtent([0.5,20]).on('zoom',ev=>{
     d3tf=ev.transform;
+    const k=ev.transform.k, tx=ev.transform.x, ty=ev.transform.y;
     g.attr('transform',ev.transform);
-    // 경계선 두께를 줌에 맞게 역보정 — 시각적 일정 유지
-    g.selectAll('.province').attr('stroke-width', 0.4/ev.transform.k);
-    // 핀은 rAF 스로틀 — SVG 이동은 즉각, 핀 재배치는 다음 프레임
+    // 경계선 두께 역보정 — 항상 약 0.5px 시각 두께 유지
+    g.selectAll('.province').attr('stroke-width', 0.5/k);
+    // 시도 라벨: k<4 표시, 오버레이 그룹에서 screen 좌표 직접 계산
+    gLabel.selectAll('.do-label')
+      .style('opacity', k>=3.5 ? Math.max(0, 1-(k-3.5)*1.5) : 1)
+      .attr('font-size', Math.max(9, Math.min(13, 11))+'px')
+      .attr('transform',d=>{
+        const[x,y]=proj([d.cx,d.cy]);
+        return `translate(${x*k+tx},${y*k+ty})`;
+      });
+    // 핀 rAF 스로틀
     if(_pinRaf) cancelAnimationFrame(_pinRaf);
     _pinRaf=requestAnimationFrame(()=>{ _pinRaf=null; renderPins(); });
   });
   d3zoom=zoom; svg.call(zoom);
 
-  // ── 인라인 GeoJSON으로 즉시 렌더 (외부 URL 없음) ──
-  const doGeo = KOREA_PROVINCES_GEO;
-
-  // 시도 채우기 — CSS stroke(.4) 단일 윤곽선 사용, 별도 border 패스 제거
-  g.selectAll('.do-fill').data(doGeo.features).join('path')
+  // ── 시도 패스 ──
+  const doGeo=KOREA_PROVINCES_GEO;
+  g.selectAll('.province').data(doGeo.features).join('path')
     .attr('class','province')
     .attr('d', path)
+    .attr('fill', d=>PROV_COLORS[d.properties.name_kr||d.properties.name||'']||'#eaf0dd')
     .append('title').text(d=>d.properties.name_kr||d.properties.name||'');
 
-  // 시도 명칭 레이블 — 항상 표시
-  const doLabels = doGeo.features.map(f=>{
-    const c = d3.geoCentroid(f);
-    return {nm: f.properties.name_kr||f.properties.name||'', cx:c[0], cy:c[1]};
+  // ── 시도 라벨 — ovarlay 그룹에 렌더 (zoom-transform 없음) ──
+  const doLabels=doGeo.features.map(f=>{
+    const c=d3.geoCentroid(f);
+    return {nm:f.properties.name_kr||f.properties.name||'',cx:c[0],cy:c[1]};
   }).filter(d=>d.nm&&d.cx&&d.cy);
 
-  g.selectAll('.do-label').data(doLabels).join('text')
+  gLabel.selectAll('.do-label').data(doLabels).join('text')
     .attr('class','do-label')
     .attr('transform',d=>{const[x,y]=proj([d.cx,d.cy]);return `translate(${x},${y})`;})
-    .attr('text-anchor','middle').attr('font-size','11')
-    .attr('fill','#3a6a28').attr('font-weight','700').attr('opacity','.7')
-    .attr('pointer-events','none')
+    .attr('font-size','11px')
     .text(d=>d.nm.replace('특별자치도','').replace('특별시','').replace('광역시','').replace('자치시',''));
 
-  // 시군구 경계 — 캠핑장 데이터 로드 후 주요 시군구 라벨 표시
-  // (외부 GeoJSON 없이 캠핑장 데이터에서 시군구 위치 추정)
   renderPins();
   renderSigunguLabels();
 }
 
 function renderSigunguLabels(){
   if(!d3svg||!d3proj) return;
-  const g=d3svg.select('#mapG');
-  g.selectAll('.sigungu-label').remove();
-  g.selectAll('.sigungu-label').data(SIGUNGU_LABEL_DATA).join('text')
+  // 오버레이 그룹에 렌더 — zoom-transform 밖이므로 라벨 크기가 확대돼도 일정
+  const gLabel=d3svg.select('#labelG');
+  gLabel.selectAll('.sigungu-label').remove();
+  gLabel.selectAll('.sigungu-label').data(SIGUNGU_LABEL_DATA).join('text')
     .attr('class','sigungu-label')
-    .attr('transform',d=>{
-      const[x,y]=d3proj([d.lon,d.lat]);
-      return `translate(${x*d3tf.k+d3tf.x},${y*d3tf.k+d3tf.y})`;
-    })
-    .attr('text-anchor','middle').attr('fill','#1a3a10')
-    .attr('font-weight','600').attr('pointer-events','none')
+    .attr('font-size','10px')
     .style('display','none')
     .text(d=>d.nm);
-  // 줌에 따라 표시
+
   d3zoom.on('zoom.sigungu',ev=>{
-    const k=ev.transform.k;
-    const labels=g.selectAll('.sigungu-label');
-    if(k<=3){ labels.style('display','none'); return; }
-    const fs=Math.max(7,Math.min(11,9/k*2.2));
-    // 지리 좌표 기준 최소 거리 필터 — 겹침 방지
-    const minDeg = k>8 ? 0.08 : k>5 ? 0.15 : 0.25;
-    const shown=[];
+    const k=ev.transform.k, tx=ev.transform.x, ty=ev.transform.y;
+    const labels=gLabel.selectAll('.sigungu-label');
+    if(k<3.5){ labels.style('display','none'); return; }
+
+    // 줌 단계별 폰트·최소 픽셀 간격
+    const fs   = k>10?11:k>6?10:9;
+    const minPx= k>10?28:k>6?42:60;  // 픽셀 공간 최소 거리
+
+    const shownPx=[];
     labels.each(function(d){
       const[x,y]=d3proj([d.lon,d.lat]);
-      const tooClose=shown.some(s=>{
-        const dx=s.lon-d.lon, dy=s.lat-d.lat;
-        return Math.sqrt(dx*dx+dy*dy)<minDeg;
+      const sx=x*k+tx, sy=y*k+ty;
+      // 화면 밖 제거
+      const svgEl=d3svg.node();
+      const vW=svgEl?svgEl.clientWidth:800, vH=svgEl?svgEl.clientHeight:600;
+      if(sx<0||sx>vW||sy<0||sy>vH){ d3.select(this).style('display','none'); return; }
+      // 픽셀 거리 기반 충돌 감지
+      const tooClose=shownPx.some(p=>{
+        const dx=p.sx-sx, dy=p.sy-sy;
+        return Math.sqrt(dx*dx+dy*dy)<minPx;
       });
       if(tooClose){ d3.select(this).style('display','none'); return; }
-      shown.push(d);
+      shownPx.push({sx,sy});
       d3.select(this)
         .style('display',null)
         .attr('font-size',fs+'px')
-        .attr('transform',`translate(${x*ev.transform.k+ev.transform.x},${y*ev.transform.k+ev.transform.y})`);
+        .attr('transform',`translate(${sx},${sy})`);
     });
   });
 }
@@ -1122,63 +1158,52 @@ function renderPins(){
   const wrap=document.getElementById('pinsWrap');
   const W=wrap.offsetWidth||800, H=wrap.offsetHeight||600;
   const visIds=new Set(FILTERED.map(c=>c.id));
-  const MAX_PINS=300;
-
-  // 줌 레벨에 따라 표시 밀도 조절
   const zoom_k=d3tf.k||1;
-  const showLimit=zoom_k>3?MAX_PINS:zoom_k>1.5?150:80;
 
-  // 그리드 기반 공간 중복 제거 — 줌 레벨에 따라 셀 크기 조정
-  const cellSize = zoom_k > 6 ? 40 : zoom_k > 3 ? 70 : zoom_k > 1.5 ? 110 : 180;
-  const gridCells = new Set();
-  const spatialFilter = c => {
-    const pos = latlng2px(c.lat, c.lng);
-    if (!pos) return false;
-    const cx = Math.floor(pos.x / cellSize);
-    const cy = Math.floor(pos.y / cellSize);
-    const key = `${cx},${cy}`;
-    if (gridCells.has(key)) return false;
+  // 줌 단계별 표시 한도 & 그리드 셀 크기
+  const showLimit = zoom_k>8?400:zoom_k>5?250:zoom_k>3?150:zoom_k>1.5?90:55;
+  const cellSz    = zoom_k>8?25 :zoom_k>5?40 :zoom_k>3?65 :zoom_k>1.5?100:170;
+
+  // 뷰포트 마진 — dot 모드는 넉넉히, pill 모드는 좁게
+  const margin = zoom_k<1.5?8:20;
+
+  const gridCells=new Set();
+  const spatialFilter=c=>{
+    const pos=latlng2px(c.lat,c.lng);
+    if(!pos) return false;
+    if(pos.x<-margin||pos.x>W+margin||pos.y<-margin||pos.y>H+margin) return false;
+    const key=`${Math.floor(pos.x/cellSz)},${Math.floor(pos.y/cellSz)}`;
+    if(gridCells.has(key)) return false;
     gridCells.add(key);
     return true;
   };
 
-  // 현재 표시할 캠핑장 (viewport 내 + 필터 + 공간 중복 제거)
   const toShow=FILTERED.filter(c=>c.lat&&c.lng&&visIds.has(c.id)&&spatialFilter(c)).slice(0,showLimit);
   const toShowIds=new Set(toShow.map(c=>c.id));
-
-  // 기존 핀 중 안 보여야 할 것 숨기기
-  Object.entries(pinNodes).forEach(([id,el])=>{
-    if(!toShowIds.has(id)) el.style.display='none';
-  });
+  Object.entries(pinNodes).forEach(([id,el])=>{ if(!toShowIds.has(id)) el.style.display='none'; });
 
   toShow.forEach(c=>{
     const pos=latlng2px(c.lat,c.lng);
     if(!pos) return;
-    if(pos.x<-30||pos.x>W+30||pos.y<-30||pos.y>H+30){
-      if(pinNodes[c.id]) pinNodes[c.id].style.display='none';
-      return;
-    }
     const isFav=favs.has(c.id);
-
-    // ── 날씨 기반 핀 색상 & 라벨 (타임라인 슬라이더 반응) ──
     const {rain,icon,cls:wxCls}=getPinWeather(c,tlDayIdx);
     const cls=isFav?'fav':wxCls;
+    const isWind=mapWeatherMode==='wind';
+    const valStr=isWind?`${rain}m/s`:`${rain}%`;
 
-    // 서울 대기질 보조 정보
-    const airRow = c.doNm==='서울특별시' ? getSeoulAirForDistrict(c.siNm) : null;
-    const pmStr  = airRow?.PM != null ? ` PM${Math.round(parseFloat(airRow.PM)||0)}` : '';
-
-    // 줌 레벨에 따라 라벨 상세도 조절
-    const isWind = mapWeatherMode === 'wind';
-    const valStr = isWind ? `${rain}m/s` : `${rain}%`;
-    let label;
-    if(zoom_k>4){
-      const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name;
-      label=(isFav?'♥ ':'')+nm+` ${icon}${valStr}`+(isWind?'':pmStr);
-    } else if(zoom_k>1.8){
-      label=(isFav?'♥ ':'')+`${icon} ${valStr}`;
+    // ── 핀 형태 결정 ──
+    // dot(k<1.5): 8px 원   mini(k<3): 아이콘만   pill(k<7): 아이콘+값   full(k≥7): 이름+값
+    let pinMode, label, pbExtra='';
+    if(zoom_k<1.5){
+      pinMode='dot'; label=''; pbExtra=' dot';
+    } else if(zoom_k<3){
+      pinMode='mini'; label=isFav?'♥':icon; pbExtra=' mini';
+    } else if(zoom_k<7){
+      pinMode='pill'; label=(isFav?'♥ ':'')+`${icon} ${valStr}`;
     } else {
-      label=(isFav?'♥':'')+icon;
+      pinMode='full';
+      const nm=c.name.length>4?c.name.slice(0,4)+'…':c.name;
+      label=(isFav?'♥ ':'')+nm+` ${icon}${valStr}`;
     }
 
     if(pinNodes[c.id]){
@@ -1188,13 +1213,13 @@ function renderPins(){
       el.style.display='';
       el.className='pin'+(selId===c.id?' sel':'');
       const pb=el.querySelector('.pb');
-      pb.className='pb '+cls;
+      pb.className=`pb ${cls}${pbExtra}`;
       pb.textContent=label;
     } else {
       const el=document.createElement('div');
       el.className='pin'+(selId===c.id?' sel':'');
       el.style.cssText=`left:${pos.x.toFixed(1)}px;top:${pos.y.toFixed(1)}px`;
-      el.innerHTML=`<div class="pb ${cls}">${label}</div>`;
+      el.innerHTML=`<div class="pb ${cls}${pbExtra}">${label}</div>`;
       el.addEventListener('click',()=>selectCamp(c.id));
       wrap.appendChild(el);
       pinNodes[c.id]=el;
