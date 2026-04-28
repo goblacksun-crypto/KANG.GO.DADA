@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.29 | Deployed: 2026-04-28 10:54:16 -->
+<!-- Version: v5.30 | Deployed: 2026-04-28 11:01:18 -->
 <!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
 <html lang="ko">
 <head>
@@ -31,7 +31,7 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
   /* 전체 스크롤 */
   html{overflow-x:hidden;overflow-y:auto}
   body{overflow-x:hidden;overflow-y:auto;height:auto !important}
-  .app{height:auto;min-height:100svh;overflow:visible}
+  .app{height:auto;min-height:100svh;overflow-x:hidden;overflow-y:visible}
 
   /* 헤더 */
   .hdr{height:auto;padding:8px 10px;flex-wrap:nowrap;gap:6px}
@@ -41,9 +41,10 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
 
   /* 메인: 세로 배치 — 사이드바→상세→지도 순 */
   .main{flex-direction:column;overflow:visible;height:auto;width:100%}
+  .mviews{overflow:visible;height:100%}
   .sb{order:1;width:100% !important;border-right:none;border-bottom:1px solid var(--bd);flex-shrink:0;overflow:visible}
   .detail{order:2;width:100% !important;border-left:none;border-top:1px solid var(--bd);flex-shrink:0;overflow:visible}
-  .center{order:3;width:100% !important;height:300px !important;flex:none;flex-shrink:0} /* 지도 맨 아래 */
+  .center{order:3;width:100% !important;height:320px;flex:none;flex-shrink:0} /* 지도 맨 아래 */
 
   /* 사이드바 내부 스크롤 */
   /* sbWx 높이는 JS에서 자동 조정 */
@@ -1327,7 +1328,9 @@ const SAMPLE=[
 
 /* ══ 시작 ══ */
 document.addEventListener('DOMContentLoaded',()=>{
-  renderFavList(); // 저장된 찜 목록 즉시 표시
+  // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
+  const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
+  document.getElementById('favBadge').textContent = savedFavs.length;
   loadData();
 });
 </script>
