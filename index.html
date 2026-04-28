@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.31 | Deployed: 2026-04-28 16:43:43 -->
+<!-- Version: v5.32 | Deployed: 2026-04-28 17:24:58 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -136,10 +136,10 @@ select:focus{border-color:var(--teal)}
 .mapwrap{flex:1;position:relative;overflow:hidden;background:#a8c8d8}
 #d3map{position:absolute;inset:0;width:100%;height:100%}
 #d3map svg{width:100%;height:100%}
-#d3map .province{fill:#e8f0d8;stroke:#7aa860;stroke-width:.5;transition:fill .15s}
-#d3map .province-border{fill:none;stroke:#5a8840;stroke-width:1.5;pointer-events:none}
-#d3map .province:hover{fill:#c8e0a8}
-#d3map .province.hl{fill:#b8d890;stroke:#5a9040;stroke-width:1.2}
+#d3map .province{fill:#eaf0dd;stroke:#a8c88a;stroke-width:0.4;transition:fill .25s}
+#d3map .province-border{display:none}
+#d3map .province:hover{fill:#cfe8ae}
+#d3map .province.hl{fill:#bde094;stroke:#7aaa55;stroke-width:0.6}
 #d3map .sigungu-label{fill:#3a5a30;font-weight:600;pointer-events:none;text-anchor:middle}
 #d3map .do-label{fill:#3a6a28;font-weight:700;pointer-events:none;text-anchor:middle}
 .pins{position:absolute;inset:0;pointer-events:none}
@@ -286,13 +286,15 @@ a.link-btn{display:inline-flex}
 
 /* ── 모바일 스크롤 & 지도 터치 개선 ── */
 @media(max-width:768px){
-  .center{height:420px !important}
-  .mapwrap{overflow:hidden}
+  .center{height:auto !important;min-height:380px}
+  .mviews{position:relative !important;overflow:hidden !important;height:350px !important}
+  .mv{position:absolute;inset:0;display:none}
+  .mv.on{display:flex;overflow:hidden}
+  #mv-chart.on{position:relative !important;height:auto !important;overflow-y:auto !important;max-height:80vh}
+  .chview{overflow-y:auto !important;height:auto !important;padding-bottom:20px}
+  .mapwrap{overflow:hidden;flex:1}
   #d3map{touch-action:none}
-  .timeline-wrap{position:relative;bottom:auto}
-  .mv.on{overflow:visible}
-  #mv-chart.on{position:relative;height:auto;overflow-y:visible}
-  .chview{overflow-y:visible !important;height:auto !important;min-height:0}
+  .timeline-wrap{position:relative;bottom:auto;flex-shrink:0}
 }
 </style>
 </head>
@@ -304,6 +306,7 @@ a.link-btn{display:inline-flex}
   <div class="hdr-r">
     <span class="ast live" id="ast">● 연결 중...</span>
     <button onclick="toggleSrcModal()" title="데이터 출처 상세 보기" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--blue);background:var(--bl);color:var(--blue);cursor:pointer;flex-shrink:0;font-weight:600">📋 출처</button>
+    <button onclick="toggleHelpModal()" title="앱 소개 및 사용 가이드" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--amber);background:var(--al);color:var(--amber);cursor:pointer;flex-shrink:0;font-weight:600">💡 도움말</button>
     <button onclick="clearCampCache()" title="캐시 삭제 후 최신 데이터 재로드" style="font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg3);color:var(--t2);cursor:pointer;flex-shrink:0">↺ 새로고침</button>
     <span class="htag hdr-pc" style="background:var(--tl);color:var(--td)">고캠핑 API</span>
     <span class="htag hdr-pc" style="background:var(--bl);color:var(--blue)">서울 데이터허브</span>
@@ -449,6 +452,92 @@ a.link-btn{display:inline-flex}
 </div>
 </div><!-- /main -->
 </div><!-- /app -->
+<!-- ══ 도움말 모달 ══ -->
+<div class="src-modal" id="helpModal" onclick="if(event.target===this)toggleHelpModal()">
+  <div class="src-modal-inner">
+    <div class="src-modal-hdr">
+      <div>
+        <div class="src-modal-title">💡 사용 가이드</div>
+        <div class="src-modal-subtitle">실시간 기상·대기질 융합 전국 캠핑 대시보드 v32 · 강민식(강고다다)</div>
+      </div>
+      <button class="src-modal-close" onclick="toggleHelpModal()">✕</button>
+    </div>
+    <div class="src-modal-body">
+
+      <!-- 앱 소개 -->
+      <div class="src-api-card" style="border-left-color:#8e44ad;background:linear-gradient(135deg,#f9f0ff,#f3e5f5)">
+        <div class="src-api-name" style="font-size:14px">🏕 앱 소개</div>
+        <p style="font-size:12px;color:var(--text);line-height:1.8;margin:0">
+          서울 시민이 전국 <strong>3,000개+ 캠핑장</strong>의 <strong>2주 기상 예보</strong>와
+          <strong>서울시 실시간 대기질</strong>을 한 화면에서 확인할 수 있는 데이터 융합 대시보드입니다.<br>
+          지도 핀 색상이 강수확률을 실시간 반영하며, 타임라인 슬라이더로 날짜별 날씨 변화를 시각화합니다.
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <span style="font-size:10px;padding:3px 9px;border-radius:99px;background:#e1f5ee;color:#1D9E75;font-weight:600">전국 3,000개+ 캠핑장</span>
+          <span style="font-size:10px;padding:3px 9px;border-radius:99px;background:#e3f2fd;color:#1565C0;font-weight:600">2주 기상예보</span>
+          <span style="font-size:10px;padding:3px 9px;border-radius:99px;background:#fce4ec;color:#c62828;font-weight:600">서울 실시간 대기질</span>
+          <span style="font-size:10px;padding:3px 9px;border-radius:99px;background:#fff8e1;color:#e65100;font-weight:600">타임라인 시뮬레이션</span>
+        </div>
+      </div>
+
+      <!-- 지도 사용법 -->
+      <div class="src-api-card">
+        <div class="src-api-name">🗺 지도 조작</div>
+        <div class="src-api-row"><span class="src-api-key">핀 색상</span><span class="src-api-val"><span style="color:#1D9E75">●</span> 강수 20% 미만 · <span style="color:#BA7517">●</span> 20~40% · <span style="color:#E24B4A">●</span> 40% 이상 · <span style="color:#c0392b">♥</span> 찜한 캠핑장</span></div>
+        <div class="src-api-row"><span class="src-api-key">핀 라벨</span><span class="src-api-val">날씨 아이콘 + 강수확률 표시. 서울 캠핑장은 미세먼지(PM10) 추가 표시.</span></div>
+        <div class="src-api-row"><span class="src-api-key">줌 인/아웃</span><span class="src-api-val">마우스 휠 또는 우측 상단 +/- 버튼. 모바일은 두 손가락 핀치.</span></div>
+        <div class="src-api-row"><span class="src-api-key">이동</span><span class="src-api-val">드래그로 이동. 모바일은 한 손가락 스와이프.</span></div>
+        <div class="src-api-row"><span class="src-api-key">캠핑장 선택</span><span class="src-api-val">지도 핀 또는 좌측 목록 클릭 → 우측 상세 패널에 정보 표시.</span></div>
+        <div class="src-api-row"><span class="src-api-key">초기화</span><span class="src-api-val">⊙ 버튼으로 전국 보기로 복귀.</span></div>
+      </div>
+
+      <!-- 타임라인 슬라이더 -->
+      <div class="src-api-card blue">
+        <div class="src-api-name">📅 타임라인 슬라이더</div>
+        <div class="src-api-row"><span class="src-api-key">위치</span><span class="src-api-val">지도 하단 슬라이더 바 (오늘 ~ 14일 후)</span></div>
+        <div class="src-api-row"><span class="src-api-key">기능</span><span class="src-api-val">슬라이더 이동 시 지도의 모든 핀이 해당 날짜의 예상 강수확률 색상으로 일괄 변경됩니다.</span></div>
+        <div class="src-api-row"><span class="src-api-key">데이터</span><span class="src-api-val">선택한 캠핑장의 날씨는 기상청 실제 예보, 미선택 캠핑장은 위치 기반 추정값을 사용합니다.</span></div>
+        <div class="src-api-row"><span class="src-api-key">활용 팁</span><span class="src-api-val">주말(D+5,D+6)로 슬라이더를 이동하면 이번 주말 전국 캠핑 날씨를 한눈에 파악할 수 있습니다.</span></div>
+      </div>
+
+      <!-- 검색 및 필터 -->
+      <div class="src-api-card amber">
+        <div class="src-api-name">🔍 검색 및 필터</div>
+        <div class="src-api-row"><span class="src-api-key">지역 필터</span><span class="src-api-val">상단 지역 버튼 또는 시/도·시/군/구 드롭다운으로 지역 좁히기. ★서울 버튼으로 서울 캠핑장만 표시.</span></div>
+        <div class="src-api-row"><span class="src-api-key">이름 검색</span><span class="src-api-val">검색창에 캠핑장 이름 또는 주소 일부 입력 후 Enter 또는 검색 버튼.</span></div>
+        <div class="src-api-row"><span class="src-api-key">정렬</span><span class="src-api-val">★서울우선 · 이름순 · 날씨순(강수낮은순) · 거리순(서울기준) 중 선택.</span></div>
+        <div class="src-api-row"><span class="src-api-key">초기화</span><span class="src-api-val">✕ 버튼으로 모든 필터 초기화.</span></div>
+      </div>
+
+      <!-- 캠핑장 상세 -->
+      <div class="src-api-card">
+        <div class="src-api-name">📋 캠핑장 상세 정보</div>
+        <div class="src-api-row"><span class="src-api-key">날씨 예보</span><span class="src-api-val">선택 시 기상청 API 호출 → 이번 주/다음 주 14일 예보 표시. 출처 버튼(기상청/weather.com/AccuWeather)으로 비교 가능.</span></div>
+        <div class="src-api-row"><span class="src-api-key">서울 대기질</span><span class="src-api-val"><strong>서울 지역 캠핑장 선택 시</strong> 하단에 서울시 실시간 대기환경 섹션 자동 추가. PM10·PM2.5·NO2·O3·CO·SO2·통합대기지수 표시.</span></div>
+        <div class="src-api-row"><span class="src-api-key">찜 기능</span><span class="src-api-val">♡ 버튼으로 찜 등록 → 상단 찜 탭에서 모아보기. 브라우저 로컬에 저장.</span></div>
+        <div class="src-api-row"><span class="src-api-key">외부 링크</span><span class="src-api-val">고캠핑 공식 사이트, 캠핏 예약, 땡큐캠핑, 네이버 검색 등 바로가기 제공.</span></div>
+      </div>
+
+      <!-- 통계 탭 -->
+      <div class="src-api-card" style="border-left-color:#639922">
+        <div class="src-api-name">📊 통계 탭</div>
+        <div class="src-api-row"><span class="src-api-key">지역별 분포</span><span class="src-api-val">캠핑장 수 상위 지역 및 서울 출발 방문객 추이 차트.</span></div>
+        <div class="src-api-row"><span class="src-api-key">월별 패턴</span><span class="src-api-val">서울 출발 월별 캠핑 방문 패턴 꺾은선 그래프.</span></div>
+        <div class="src-api-row"><span class="src-api-key">유형 비율</span><span class="src-api-val">오토캠핑·일반야영·글램핑·카라반 도넛 차트.</span></div>
+      </div>
+
+      <!-- 데이터 갱신 -->
+      <div class="src-api-card" style="border-left-color:var(--t3)">
+        <div class="src-api-name">🔄 데이터 갱신 주기</div>
+        <div class="src-api-row"><span class="src-api-key">캠핑장 목록</span><span class="src-api-val">최초 로드 후 24시간 로컬 캐시. 우측 상단 ↺ 버튼으로 즉시 갱신 가능.</span></div>
+        <div class="src-api-row"><span class="src-api-key">날씨 예보</span><span class="src-api-val">캠핑장 선택 시 실시간 호출. 세션 내 캐시 (탭 닫으면 초기화).</span></div>
+        <div class="src-api-row"><span class="src-api-key">서울 대기질</span><span class="src-api-val">5분 세션 캐시. 서울 캠핑장 선택 시 자동 호출.</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- ══ 출처 상세 모달 ══ -->
 <div class="src-modal" id="srcModal" onclick="if(event.target===this)toggleSrcModal()">
   <div class="src-modal-inner">
@@ -555,7 +644,7 @@ const PROXIES = [
 ];
 
 /* ── 서울 열린데이터광장 (openAPI.seoul.go.kr) ── */
-const SEOUL_API_KEY = 'YOUR_SEOUL_OPEN_DATA_KEY'; // ← 서울 열린데이터광장 발급 키로 교체
+const SEOUL_API_KEY = '6f714e544b6772613839746f517356';
 const SEOUL_AIR_URL = `https://openapi.seoul.go.kr:5000/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`;
 let seoulAirCache = null;      // { ts, data: row[] }
 const SEOUL_AIR_TTL = 5 * 60 * 1000; // 5분 캐시
@@ -678,6 +767,7 @@ async function loadData() {
     setAst(`● ${ALL.length.toLocaleString()}개 (캐시)`,'live');
     applyFilter(); initMap(); initCharts();
     setTimeout(renderSigunguLabels, 200);
+    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows) renderPins(); }),1500);
     setLbar(false);
     return;
   }
@@ -707,6 +797,8 @@ async function loadData() {
     ALL = prioritizeSeoul(ALL); // ── 서울 우선 정렬 (경진대회 목적성) ──
     setCampCache(ALL);
     applyFilter();
+    // 서울 대기질 선제 로드 → 지도 핀 PM10 즉시 반영
+    setTimeout(()=>fetchSeoulAirQuality('').then(rows=>{ if(rows) renderPins(); }),1500);
     setTimeout(renderSigunguLabels,200);
   } catch(e) {
     console.error(e);
@@ -926,27 +1018,24 @@ function initMap() {
   const proj=d3.geoMercator().center([128.0,36.5]).scale(Math.min(W,H)*5.2).translate([W/2,H/2]);
   d3proj=proj; d3svg=svg;
   const path=d3.geoPath().projection(proj);
+  let _pinRaf=null;
   const zoom=d3.zoom().scaleExtent([0.5,20]).on('zoom',ev=>{
     d3tf=ev.transform;
     g.attr('transform',ev.transform);
-    renderPins();
+    // 핀은 rAF 스로틀 — SVG 이동은 즉각, 핀 재배치는 다음 프레임
+    if(_pinRaf) cancelAnimationFrame(_pinRaf);
+    _pinRaf=requestAnimationFrame(()=>{ _pinRaf=null; renderPins(); });
   });
   d3zoom=zoom; svg.call(zoom);
 
   // ── 인라인 GeoJSON으로 즉시 렌더 (외부 URL 없음) ──
   const doGeo = KOREA_PROVINCES_GEO;
 
-  // 시도 채우기
+  // 시도 채우기 — CSS stroke(.4) 단일 윤곽선 사용, 별도 border 패스 제거
   g.selectAll('.do-fill').data(doGeo.features).join('path')
     .attr('class','province')
     .attr('d', path)
-    .attr('fill','#e8f0d8')
     .append('title').text(d=>d.properties.name_kr||d.properties.name||'');
-
-  // 시도 경계선 (굵게)
-  g.selectAll('.do-border').data(doGeo.features).join('path')
-    .attr('fill','none').attr('stroke','#5a8840').attr('stroke-width','1.2')
-    .attr('d', path);
 
   // 시도 명칭 레이블 — 항상 표시
   const doLabels = doGeo.features.map(f=>{
@@ -1029,14 +1118,27 @@ function renderPins(){
       return;
     }
     const isFav=favs.has(c.id);
-    const rain=c.rain??Math.floor(Math.abs(Math.sin(c.lat*100+c.lng))*60);
-    const cls=isFav?'fav':rain>=40?'r':rain>=20?'y':'g';
-    // 핀 이름 (줌 레벨에 따라 축약)
-    const label=(isFav?'♥ ':'')+
-      (zoom_k>4?c.name:(zoom_k>2?c.name.slice(0,8)+(c.name.length>8?'…':''):c.siNm||c.doNm.slice(0,2)));
+
+    // ── 날씨 기반 핀 색상 & 라벨 (타임라인 슬라이더 반응) ──
+    const {rain,icon,cls:wxCls}=getPinWeather(c,tlDayIdx);
+    const cls=isFav?'fav':wxCls;
+
+    // 서울 대기질 보조 정보
+    const airRow = c.doNm==='서울특별시' ? getSeoulAirForDistrict(c.siNm) : null;
+    const pmStr  = airRow ? ` PM${Math.round(airRow.PM10||0)}` : '';
+
+    // 줌 레벨에 따라 라벨 상세도 조절
+    let label;
+    if(zoom_k>4){
+      const nm=c.name.length>6?c.name.slice(0,6)+'…':c.name;
+      label=(isFav?'♥ ':'')+nm+` ${icon}${rain}%`+pmStr;
+    } else if(zoom_k>1.8){
+      label=(isFav?'♥ ':'')+`${icon} ${rain}%`+pmStr;
+    } else {
+      label=(isFav?'♥':'')+icon;
+    }
 
     if(pinNodes[c.id]){
-      // 기존 핀 업데이트
       const el=pinNodes[c.id];
       el.style.left=pos.x.toFixed(1)+'px';
       el.style.top=pos.y.toFixed(1)+'px';
@@ -1046,7 +1148,6 @@ function renderPins(){
       pb.className='pb '+cls;
       pb.textContent=label;
     } else {
-      // 새 핀 생성
       const el=document.createElement('div');
       el.className='pin'+(selId===c.id?' sel':'');
       el.style.cssText=`left:${pos.x.toFixed(1)}px;top:${pos.y.toFixed(1)}px`;
@@ -1572,7 +1673,21 @@ function showMtab(id,btn){
   document.querySelectorAll('.mv').forEach(v=>v.classList.remove('on'));
   document.getElementById('mv-'+id).classList.add('on');
   document.querySelectorAll('.mtab').forEach(b=>b.classList.toggle('on',b===btn));
-  if(id==='map')setTimeout(renderPins,50);
+  if(id==='map'){
+    // 모바일에서 지도 미초기화 또는 크기 오류 대응
+    setTimeout(()=>{
+      const mapEl=document.getElementById('d3map');
+      if(!d3svg){
+        initMap();
+        setTimeout(renderSigunguLabels,300);
+      } else if(mapEl&&mapEl.offsetWidth>10){
+        renderPins();
+      } else {
+        // 크기 복구 후 재시도
+        setTimeout(renderPins,200);
+      }
+    },80);
+  }
 }
 
 /* ══ 차트 ══ */
@@ -1598,6 +1713,29 @@ function initCharts(){
     options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
       plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:10}}}}});
   document.getElementById('cR')._chart=c1;
+}
+
+/* ══ 핀 날씨 헬퍼 ══ */
+function getPinWeather(c, dayIdx) {
+  let rain, icon;
+  if (wxCache[c.id] && wxCache[c.id][dayIdx]) {
+    rain = wxCache[c.id][dayIdx].rain;
+    icon = wxCache[c.id][dayIdx].icon;
+  } else {
+    // 위치 + 날짜 기반 의사난수 추정 (실제 예보 미로드 시)
+    const seed = Math.abs(Math.sin((c.lat||37)*73.1 + (c.lng||127)*37.9 + dayIdx*17.3)) * 100;
+    rain = Math.floor(seed) % 60 + 5;
+    icon = rain > 50 ? '🌧' : rain > 30 ? '⛅' : '☀';
+  }
+  const cls = rain >= 40 ? 'r' : rain >= 20 ? 'y' : 'g';
+  return { rain, icon, cls };
+}
+
+function getSeoulAirForDistrict(siNm) {
+  if (!seoulAirCache?.data) return null;
+  return seoulAirCache.data.find(r =>
+    r.MSRSTE_NM && (r.MSRSTE_NM === siNm || r.MSRSTE_NM.includes(siNm.replace('구','')))
+  ) || null;
 }
 
 /* ══ 타임라인 슬라이더 ══ */
@@ -1648,6 +1786,11 @@ function updateMarkerIcons(dayIdx) {
     const pb = el.querySelector('.pb');
     if (pb) pb.className = 'pb ' + cls;
   });
+}
+
+/* ══ 도움말 모달 ══ */
+function toggleHelpModal() {
+  document.getElementById('helpModal').classList.toggle('open');
 }
 
 /* ══ 출처 모달 ══ */
