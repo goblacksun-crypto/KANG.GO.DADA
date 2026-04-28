@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.26 | Deployed: 2026-04-28 10:31:59 -->
+<!-- Version: v5.27 | Deployed: 2026-04-28 10:44:26 -->
 <!-- 제작: 강고다다 | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v5.9 -->
 <html lang="ko">
 <head>
@@ -20,28 +20,40 @@
 }
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
 
-/* ── 모바일 반응형 ── */
+/* ── PC: 사이드바→상세패널→지도 순서 ── */
+.main{display:flex;flex:1;overflow:hidden;flex-direction:row}
+.sb{order:1}
+.detail{order:2}
+.center{order:3;flex:1}
+
+/* ── 모바일 반응형 (768px 이하) ── */
 @media(max-width:768px){
-  body{overflow:auto;height:auto}
-  .app{height:auto;min-height:100vh}
-  .hdr{height:auto;padding:8px 12px;flex-wrap:wrap;gap:6px}
-  .hdr-r{margin-left:0;width:100%;justify-content:flex-start;flex-wrap:wrap}
-  .hdr-r .htag{font-size:10px}
-  .main{flex-direction:column;overflow:visible;height:auto}
-  .sb{width:100%;max-height:none;border-right:none;border-bottom:1px solid var(--bd)}
-  #sbWx{max-height:320px;overflow-y:auto}
-  .center{height:320px;flex:none}
-  .detail{width:100%;border-left:none;border-top:1px solid var(--bd);overflow-y:visible}
-  #dcontent{overflow-y:visible}
-  .citems{max-height:280px;overflow-y:auto}
-  .region-btns{gap:3px}
+  /* 전체 스크롤 */
+  html{overflow-x:hidden;overflow-y:auto}
+  body{overflow-x:hidden;overflow-y:auto;height:auto !important}
+  .app{height:auto;min-height:100svh;overflow:visible}
+
+  /* 헤더 */
+  .hdr{height:auto;padding:8px 10px;flex-wrap:nowrap;gap:6px}
+  .hdr .logo{font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hdr-sub,.hdr-pc{display:none !important}
+  .hdr-r{flex-wrap:nowrap;gap:4px;flex-shrink:0}
+
+  /* 메인: 세로 배치 — 사이드바→상세→지도 순 */
+  .main{flex-direction:column;overflow:visible;height:auto;width:100%}
+  .sb{order:1;width:100% !important;border-right:none;border-bottom:1px solid var(--bd);flex-shrink:0;overflow:visible}
+  .detail{order:2;width:100% !important;border-left:none;border-top:1px solid var(--bd);flex-shrink:0;overflow:visible}
+  .center{order:3;width:100% !important;height:300px !important;flex:none;flex-shrink:0} /* 지도 맨 아래 */
+
+  /* 사이드바 내부 스크롤 */
+  #sbWx{max-height:300px;overflow-y:auto}
+  .citems{max-height:250px;overflow-y:auto}
+  .region-btns{flex-wrap:wrap;gap:3px}
   .rb{font-size:10px;padding:3px 7px}
+
+  /* 상세패널 */
   .igrid{grid-template-columns:1fr 1fr}
   .wgrid{grid-template-columns:repeat(7,1fr)}
-  .facsec .facgrid{gap:3px}
-  .hdr-sub{display:none !important}
-  .hdr-pc{display:none !important}
-  .hdr-r{margin-left:auto}
 }
 button{font-family:inherit;cursor:pointer}
 
@@ -55,8 +67,6 @@ button{font-family:inherit;cursor:pointer}
 .ast{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
 .ast.live{background:var(--tl);color:var(--td)}
 .ast.demo{background:var(--bg3);color:var(--t2)}
-.main{display:flex;flex:1;overflow:hidden}
-
 /* ── 사이드바 ── */
 .sb{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
 .stabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
