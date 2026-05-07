@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.36 | Deployed: 2026-05-07 20:25:48 -->
+<!-- Version: v5.37 | Deployed: 2026-05-07 20:32:18 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -438,9 +438,9 @@ a.link-btn{display:inline-flex}
 
         <div class="minfo" id="mapInfo">전국 캠핑장</div>
         <div class="mleg">
-          <div><span class="ldot" style="background:#1D9E75"></span>강수 20% 미만</div>
-          <div><span class="ldot" style="background:#BA7517"></span>20~40%</div>
-          <div><span class="ldot" style="background:#E24B4A"></span>40% 이상</div>
+          <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
+          <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
+          <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
           <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>
         </div>
         <div class="srcpanel">
@@ -457,7 +457,7 @@ a.link-btn{display:inline-flex}
             oninput="onTimelineChange(parseInt(this.value))">
           <div class="tl-date" id="tlDate">2주 예보 탐색</div>
           <div class="wx-mode-btns">
-            <button id="wxModeRain" class="wx-mode-btn on" onclick="setMapWeatherMode('rain')">🌧 우천</button>
+            <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
             <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
           </div>
         </div>
@@ -527,8 +527,8 @@ a.link-btn{display:inline-flex}
       <!-- 지도 사용법 -->
       <div class="src-api-card">
         <div class="src-api-name">🗺 지도 조작</div>
-        <div class="src-api-row"><span class="src-api-key">핀 색상</span><span class="src-api-val"><span style="color:#1D9E75">●</span> 강수 20% 미만 · <span style="color:#BA7517">●</span> 20~40% · <span style="color:#E24B4A">●</span> 40% 이상 · <span style="color:#c0392b">♥</span> 찜한 캠핑장</span></div>
-        <div class="src-api-row"><span class="src-api-key">핀 라벨</span><span class="src-api-val">날씨 아이콘 + 강수확률 표시. 서울 캠핑장은 미세먼지(PM10) 추가 표시.</span></div>
+        <div class="src-api-row"><span class="src-api-key">핀 색상</span><span class="src-api-val"><span style="color:#1D9E75">●</span> 맑음·구름조금 · <span style="color:#BA7517">●</span> 구름많음·흐림 · <span style="color:#E24B4A">●</span> 비·눈 · <span style="color:#c0392b">♥</span> 찜한 캠핑장</span></div>
+        <div class="src-api-row"><span class="src-api-key">핀 라벨</span><span class="src-api-val">날씨 아이콘 + 날씨 상태(맑음·구름조금·흐림·비·눈) 표시. 바람 모드 전환 시 풍속(m/s) 표시.</span></div>
         <div class="src-api-row"><span class="src-api-key">줌 인/아웃</span><span class="src-api-val">마우스 휠 또는 우측 상단 +/- 버튼. 모바일은 두 손가락 핀치.</span></div>
         <div class="src-api-row"><span class="src-api-key">이동</span><span class="src-api-val">드래그로 이동. 모바일은 한 손가락 스와이프.</span></div>
         <div class="src-api-row"><span class="src-api-key">캠핑장 선택</span><span class="src-api-val">지도 핀 또는 좌측 목록 클릭 → 우측 상세 패널에 정보 표시.</span></div>
@@ -699,7 +699,7 @@ const SEOUL_AIR_TTL = 5 * 60 * 1000; // 5분 캐시
 
 /* ── 타임라인 ── */
 let tlDayIdx = 0;              // 현재 슬라이더 날짜 오프셋 (0=오늘)
-let mapWeatherMode = 'rain';   // 'rain' | 'wind'
+let mapWeatherMode = 'wx';     // 'wx' | 'wind'
 
 /* ══ 상태 ══ */
 let ALL = [];          // 전체 캠핑장
@@ -1239,10 +1239,9 @@ function renderPins(){
     const pos=latlng2px(c.lat,c.lng);
     if(!pos) return;
     const isFav=favs.has(c.id);
-    const {rain,icon,cls:wxCls}=getPinWeather(c,tlDayIdx);
+    const {rain,icon,cls:wxCls,text:wxText}=getPinWeather(c,tlDayIdx);
     const cls=isFav?'fav':wxCls;
-    const isWind=mapWeatherMode==='wind';
-    const valStr=isWind?`${rain}m/s`:`${rain}%`;
+    const valStr=wxText;
 
     let label='', pbExtra='';
     if(pinMode==='dot'){
@@ -1253,7 +1252,7 @@ function renderPins(){
       label=(isFav?'♥ ':'')+`${icon} ${valStr}`;
     } else {
       const nm=c.name.length>4?c.name.slice(0,4)+'…':c.name;
-      label=(isFav?'♥ ':'')+nm+` ${icon}${valStr}`;
+      label=(isFav?'♥ ':'')+nm+` ${icon} ${valStr}`;
     }
 
     if(pinNodes[c.id]){
@@ -1902,6 +1901,8 @@ function initCharts(){
 }
 
 /* ══ 핀 날씨 헬퍼 ══ */
+const WX_TEXT = {'☀':'맑음','⛅':'구름조금','☁':'흐림','🌧':'비','❄':'눈','🌨':'눈'};
+
 function getPinWeather(c, dayIdx) {
   const day = wxCache[c.id]?.[dayIdx];
   if (mapWeatherMode === 'wind') {
@@ -1914,7 +1915,7 @@ function getPinWeather(c, dayIdx) {
     }
     const icon = wsd >= 9 ? '🌬' : wsd >= 5 ? '💨' : '🍃';
     const cls  = wsd >= 9 ? 'r'  : wsd >= 5 ? 'y'  : 'g';
-    return { rain: wsd, icon, cls, isWind: true };
+    return { rain: wsd, icon, cls, text: `${wsd}m/s`, isWind: true };
   }
   let rain, icon;
   if (day) {
@@ -1926,14 +1927,14 @@ function getPinWeather(c, dayIdx) {
     icon = rain > 50 ? '🌧' : rain > 30 ? '⛅' : '☀';
   }
   const cls = rain >= 40 ? 'r' : rain >= 20 ? 'y' : 'g';
-  return { rain, icon, cls };
+  const text = WX_TEXT[icon] || '맑음';
+  return { rain, icon, cls, text };
 }
 
 function setMapWeatherMode(mode) {
   mapWeatherMode = mode;
-  document.getElementById('wxModeRain').classList.toggle('on', mode === 'rain');
+  document.getElementById('wxModeWx').classList.toggle('on', mode === 'wx');
   document.getElementById('wxModeWind').classList.toggle('on', mode === 'wind');
-  // 범례 업데이트
   const leg = document.querySelector('.mleg');
   if (leg) {
     if (mode === 'wind') {
@@ -1944,9 +1945,9 @@ function setMapWeatherMode(mode) {
         <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
     } else {
       leg.innerHTML = `
-        <div><span class="ldot" style="background:#1D9E75"></span>강수 20% 미만</div>
-        <div><span class="ldot" style="background:#BA7517"></span>20~40%</div>
-        <div><span class="ldot" style="background:#E24B4A"></span>40% 이상</div>
+        <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
+        <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
+        <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
         <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
     }
   }
