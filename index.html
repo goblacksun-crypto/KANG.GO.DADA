@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.39 | Deployed: 2026-05-09 20:34:07 -->
+<!-- Version: v5.40 | Deployed: 2026-05-09 20:48:50 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#f7f6f2;--bg2:#fff;--bg3:#f0efe9;
-  --text:#1a1a18;--t2:#5f5e5a;--t3:#9a9992;
+  --text:#1a1a18;--t1:#3a3a36;--t2:#5f5e5a;--t3:#9a9992;
   --bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.2);
   --teal:#1D9E75;--tl:#E1F5EE;--td:#085041;
   --blue:#378ADD;--bl:#E6F1FB;
@@ -392,6 +392,31 @@ a.link-btn{display:inline-flex}
         <button class="sr" onclick="resetSearch()">✕</button>
       </div>
     </div>
+    <!-- 칩 필터 -->
+    <div class="chips">
+      <span class="clabel">빠른 필터</span>
+      <div class="crow">
+        <button class="chip" data-f="주말적합" onclick="toggleChip(this)">☀ 주말적합</button>
+        <button class="chip" data-f="전기" onclick="toggleChip(this)">⚡ 전기</button>
+        <button class="chip" data-f="샤워실" onclick="toggleChip(this)">🚿 샤워실</button>
+        <button class="chip" data-f="반려동물" onclick="toggleChip(this)">🐾 반려동물</button>
+        <button class="chip" data-f="수영장" onclick="toggleChip(this)">🏊 수영장</button>
+      </div>
+      <span class="clabel">유형</span>
+      <div class="crow">
+        <button class="chip" data-f="오토캠핑" onclick="toggleChip(this)">🚗 오토캠핑</button>
+        <button class="chip" data-f="글램핑" onclick="toggleChip(this)">🏕 글램핑</button>
+        <button class="chip" data-f="카라반" onclick="toggleChip(this)">🚐 카라반</button>
+        <button class="chip" data-f="일반야영" onclick="toggleChip(this)">⛺ 일반야영</button>
+      </div>
+      <span class="clabel">환경</span>
+      <div class="crow">
+        <button class="chip" data-f="계곡" onclick="toggleChip(this)">💧 계곡</button>
+        <button class="chip" data-f="바다" onclick="toggleChip(this)">🌊 바다</button>
+        <button class="chip" data-f="강/호수" onclick="toggleChip(this)">🏞 강/호수</button>
+        <button class="chip" data-f="숲/산" onclick="toggleChip(this)">🌲 숲/산</button>
+      </div>
+    </div>
     <div id="sbSeoulAir" style="flex:none;overflow:hidden;border-bottom:1px solid var(--bd);padding:8px 12px;font-size:11px;background:linear-gradient(135deg,#f0f9ff 0%,#e8f5f0 100%)">
       <div style="display:flex;align-items:center;gap:6px;color:var(--t3)">
         <span style="font-size:13px">🌫</span>
@@ -502,7 +527,7 @@ a.link-btn{display:inline-flex}
     <div class="src-modal-hdr">
       <div>
         <div class="src-modal-title">💡 사용 가이드</div>
-        <div class="src-modal-subtitle">실시간 기상·대기질 융합 전국 캠핑 대시보드 v32 · 강민식(강고다다)</div>
+        <div class="src-modal-subtitle" id="helpModalVer">실시간 기상·대기질 융합 전국 캠핑 대시보드 · 강민식(강고다다)</div>
       </div>
       <button class="src-modal-close" onclick="toggleHelpModal()">✕</button>
     </div>
@@ -588,7 +613,7 @@ a.link-btn{display:inline-flex}
     <div class="src-modal-hdr">
       <div>
         <div class="src-modal-title">📋 데이터 출처 및 API 상세</div>
-        <div class="src-modal-subtitle">서울 빅데이터 활용 경진대회 | 강민식(강고다다) | v31_gemini</div>
+        <div class="src-modal-subtitle" id="srcModalVer">서울 빅데이터 활용 경진대회 | 강민식(강고다다)</div>
       </div>
       <button class="src-modal-close" onclick="toggleSrcModal()">✕</button>
     </div>
@@ -777,6 +802,11 @@ const SIDO_SI = {
   '인천광역시':['강화군','옹진군','중구','남동구','연수구','부평구','계양구','서구','동구','미추홀구'],
   '서울특별시':['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'],
   '부산광역시':['기장군','강서구','금정구','남구','동구','동래구','부산진구','북구','사상구','사하구','서구','수영구','연제구','영도구','중구','해운대구'],
+  '대구광역시':['중구','동구','서구','남구','북구','수성구','달서구','달성군'],
+  '광주광역시':['동구','서구','남구','북구','광산구'],
+  '대전광역시':['동구','중구','서구','유성구','대덕구'],
+  '울산광역시':['중구','남구','동구','북구','울주군'],
+  '세종특별자치시':[],
 };
 
 const DO_FOCUS = {
@@ -786,6 +816,9 @@ const DO_FOCUS = {
   '경상북도':{lat:36.4,lng:128.9,sc:5},'경상남도':{lat:35.4,lng:128.3,sc:5.5},
   '제주특별자치도':{lat:33.4,lng:126.5,sc:7},'인천광역시':{lat:37.5,lng:126.6,sc:7},
   '서울특별시':{lat:37.57,lng:127.0,sc:9},'부산광역시':{lat:35.2,lng:129.0,sc:8},
+  '대구광역시':{lat:35.87,lng:128.60,sc:8},'광주광역시':{lat:35.16,lng:126.85,sc:8.5},
+  '대전광역시':{lat:36.35,lng:127.38,sc:8.5},'울산광역시':{lat:35.54,lng:129.31,sc:8.5},
+  '세종특별자치시':{lat:36.48,lng:127.29,sc:9},
 };
 
 /* ══ fetch 프록시 (병렬 Promise.any) ══ */
@@ -1368,43 +1401,35 @@ async function fetchSeoulAirQuality(siNm) {
     return seoulAirCache.data;
   }
 
-  // openAPI.seoul.go.kr 전용 프록시 순서:
-  // allorigins 먼저 (서버사이드 → HTTP 8088 접근 가능),
-  // 그 다음 corsproxy, 마지막으로 직접 호출
+  // 2 엔드포인트 × 3 프록시 = 6개 시도를 Promise.any로 병렬 실행
+  // → 가장 먼저 성공한 응답 즉시 사용 (순차 최악 81초 → 단일 타임아웃으로 단축)
   const proxyWrappers = [
     u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     u => u,
   ];
 
-  for (const ep of SEOUL_AIR_ENDPOINTS) {
-    for (const wrap of proxyWrappers) {
-      try {
-        const res = await fetch(wrap(ep), { signal: AbortSignal.timeout(9000) });
-        if (!res.ok) continue;
-        const text = await res.text();
-        let json;
-        try {
-          const tmp = JSON.parse(text);
-          // allorigins 는 { contents: "json-string" } 형식으로 래핑
-          json = tmp.contents ? JSON.parse(tmp.contents) : tmp;
-        } catch { continue; }
+  const attempts = SEOUL_AIR_ENDPOINTS.flatMap(ep =>
+    proxyWrappers.map(async wrap => {
+      const res = await fetch(wrap(ep), { signal: AbortSignal.timeout(9000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const tmp = JSON.parse(text);
+      const json = (tmp.contents != null) ? JSON.parse(tmp.contents) : tmp;
+      const rows = json?.RealtimeCityAir?.row;
+      if (!rows?.length) throw new Error('빈 응답');
+      return rows;
+    })
+  );
 
-        const rows = json?.RealtimeCityAir?.row;
-        if (rows?.length > 0) {
-          console.log(`✅ 서울 대기질 로드 성공 (${ep.includes('8088') ? 'HTTP8088' : 'HTTPS5000'}, ${wrap.toString().includes('allorigins') ? 'allorigins' : wrap.toString().includes('corsproxy') ? 'corsproxy' : '직접'})`);
-          seoulAirCache = { ts: Date.now(), data: rows };
-          return rows;
-        }
-      } catch(e) {
-        console.warn(`서울 대기질 시도 실패:`, wrap(ep).slice(0, 60), e.message);
-        continue;
-      }
-    }
+  try {
+    const rows = await Promise.any(attempts);
+    seoulAirCache = { ts: Date.now(), data: rows };
+    return rows;
+  } catch {
+    console.warn('서울 대기질: 모든 경로 실패');
+    return null;
   }
-
-  console.warn('서울 대기질: 모든 경로 실패');
-  return null;
 }
 
 function renderSeoulAirSection(siNm, rows) {
@@ -1623,16 +1648,22 @@ async function selectCamp(id){
   if(c.lat&&c.lng)focusMap(c.lat,c.lng,9.5,c.name);
   showMtab('map',document.querySelector('.mtab'));
 
-  // 날씨 — 캠핑장별 캐시
+  // 날씨 — 캠핑장별 캐시 (race condition 방지: reqId로 스냅샷 고정)
+  const reqId = id;
   if(!wxCache[id]){
     renderDetail(c,null,true);
     if(c.lat&&c.lng){
       try{
         const w=await fetchWeather(c.lat,c.lng);
+        if(selId!==reqId)return;  // 다른 캠핑장이 선택됐으면 결과 폐기
         wxCache[id]=w||makeFallbackW(c);
-      }catch{wxCache[id]=makeFallbackW(c);}
+      }catch{
+        if(selId!==reqId)return;
+        wxCache[id]=makeFallbackW(c);
+      }
     }else wxCache[id]=makeFallbackW(c);
   }
+  if(selId!==reqId)return;  // 캐시 히트 경로도 체크
   // rain 값 업데이트
   if(!c.rain&&wxCache[id]){
     const weekend=wxCache[id].filter(d=>d.wknd).slice(0,2);
@@ -2034,7 +2065,9 @@ function initTimelineSlider() {
 function onTimelineChange(dayIdx) {
   tlDayIdx = dayIdx;
   updateTimelineLabel(dayIdx);
-  updateMarkerIcons(dayIdx);
+  // renderPins 전체 갱신 — pill/full 텍스트·색상·찜 핀 모두 반영
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(renderPins, 50);
 }
 
 function updateTimelineLabel(dayIdx) {
@@ -2108,10 +2141,16 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
+const APP_VERSION = 'v5.40';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
   document.getElementById('favBadge').textContent = savedFavs.length;
+  // 모달 버전 동적 주입
+  const hv = document.getElementById('helpModalVer');
+  const sv = document.getElementById('srcModalVer');
+  if(hv) hv.textContent = `실시간 기상·대기질 융합 전국 캠핑 대시보드 ${APP_VERSION} · 강민식(강고다다)`;
+  if(sv) sv.textContent = `서울 빅데이터 활용 경진대회 | 강민식(강고다다) | ${APP_VERSION}`;
   initTimelineSlider();
   loadData();
 });
