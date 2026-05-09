@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.37 | Deployed: 2026-05-08 17:13:31 -->
+<!-- Version: v5.38 | Deployed: 2026-05-09 20:22:21 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -181,7 +181,7 @@ select:focus{border-color:var(--teal)}
 .pin-ring2{border:1.5px solid #1D9E75}
 .pin.sel .pin-ring {animation:pinPulse1 1.5s ease-out infinite}
 .pin.sel .pin-ring2{animation:pinPulse2 1.5s ease-out .45s infinite}
-.mleg{position:absolute;bottom:12px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd)}
+.mleg{position:absolute;bottom:46px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd)}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
@@ -1027,7 +1027,7 @@ function renderFavList() {
   const el=document.getElementById('favList');
   if(!arr.length){el.innerHTML='<div class="fav-empty">찜한 캠핑장이 없어요.<br>♡ 버튼을 눌러보세요.</div>';return;}
   el.innerHTML=arr.map(c=>`
-    <div class="ci${selId===c.id?' on':''}" onclick="selectCamp('${c.id}')">
+    <div class="ci${selId===c.id?' on':''}" data-id="${c.id}" onclick="selectCamp('${c.id}')">
       <div class="cdot" style="background:#c0392b"></div>
       <div class="cbd"><div class="cnm">${c.name}</div><div class="csub">${c.siNm}</div></div>
       <div class="crt">
@@ -1534,8 +1534,14 @@ function latlng2grid(lat,lng){
 }
 function kmaBaseTime(){
   const now=new Date(),bh=[2,5,8,11,14,17,20,23];
-  let base=bh[0];for(const h of bh)if(now.getHours()>=h+1)base=h;
   const p=n=>String(n).padStart(2,'0');
+  let base=null;
+  for(const h of bh)if(now.getHours()>=h+1)base=h;
+  if(base===null){
+    // 자정~새벽3시: 전날 2300 발표 사용 (당일 0200 미발표)
+    const prev=new Date(now.getTime()-24*60*60*1000);
+    return{date:`${prev.getFullYear()}${p(prev.getMonth()+1)}${p(prev.getDate())}`,time:'2300'};
+  }
   return{date:`${now.getFullYear()}${p(now.getMonth()+1)}${p(now.getDate())}`,time:`${p(base)}00`};
 }
 async function fetchWeather(lat,lng){
@@ -1559,7 +1565,7 @@ function parseKma(data){
   const result=[];
   Object.entries(byDay).forEach(([ds,tm])=>{
     const noon=tm['1200']||tm['1500']||Object.values(tm)[0]||{};
-    const temps=Object.values(tm).map(t=>parseFloat(t.TMP||t.T1H||0)).filter(Boolean);
+    const temps=Object.values(tm).map(t=>{const v=parseFloat(t.TMP??t.T1H);return isNaN(v)?null:v;}).filter(v=>v!==null);
     const hi=temps.length?Math.round(Math.max(...temps)):'?';
     const lo=temps.length?Math.round(Math.min(...temps)):'?';
     const rain=Math.max(...Object.values(tm).map(t=>parseInt(t.POP||0)));
@@ -1706,6 +1712,11 @@ function renderDetail(c,wx,loading=false){
         <div style="font-size:13px;font-weight:700;color:${w.find(d=>d.wknd)?.rain>=40?'var(--red)':w.find(d=>d.wknd)?.rain>=20?'var(--amber)':'var(--teal)'}">${w.find(d=>d.wknd)?.rain??'?'}%</div>
         <div style="font-size:9px;color:var(--t3)">강수</div>
       </div>
+    </div>
+    <div class="wsec">
+      <div class="wshdr"><div class="wstitle">14일 날씨 예보</div><span style="font-size:9px;color:var(--t3)">기상청 단기예보</span></div>
+      <div class="wklabel">이번 주</div><div class="wgrid">${wdH(w1,0)}</div>
+      <div class="wklabel" style="margin-top:6px">다음 주</div><div class="wgrid">${wdH(w2,7)}</div>
     </div>`:''}
     <div class="dhdr">
       <div class="dhdr-top">
