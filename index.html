@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.43 | Deployed: 2026-05-09 21:47:23 -->
+<!-- Version: v5.44 | Deployed: 2026-05-09 23:40:00 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -7,7 +7,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>캠핑날씨 ⛺</title>
-<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=19def569114dcae1468eda1b595ef789&autoload=false"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=19def569114dcae1468eda1b595ef789"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1102,20 +1102,48 @@ const PROV_COLORS = {
 /* ══ 카카오맵 초기화 ══ */
 function initMap() {
   if (kakaoMap) return;
-  kakao.maps.load(() => {
-    const container = document.getElementById('d3map');
+
+  // ① SDK 로드 확인 — 미로드 시 최대 10회 재시도 (100ms 간격)
+  if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
+    console.warn('[initMap] kakao SDK 미로드 — 재시도 대기');
+    if ((initMap._retry = (initMap._retry || 0) + 1) < 10) {
+      setTimeout(initMap, 300);
+    } else {
+      console.error('[initMap] kakao SDK 로드 실패 — 지도를 표시할 수 없습니다');
+      setAst('● 지도 로드 실패','demo');
+    }
+    return;
+  }
+  initMap._retry = 0;
+
+  // ② 컨테이너 크기 확인 — 0px이면 레이아웃 완성 후 재시도
+  const container = document.getElementById('d3map');
+  if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
+    console.warn('[initMap] 컨테이너 크기 0px — 레이아웃 대기 후 재시도');
+    setTimeout(initMap, 200);
+    return;
+  }
+
+  // ③ 지도 생성 — autoload=false 없으므로 new Map() 직접 사용 가능
+  try {
     kakaoMap = new kakao.maps.Map(container, {
       center: new kakao.maps.LatLng(36.5, 128.0),
       level: 13,
       mapTypeId: kakao.maps.MapTypeId.ROADMAP
     });
-    // 줌·드래그 종료 시 핀 갱신 (debounce)
-    const refresh = () => { clearTimeout(renderTimer); renderTimer = setTimeout(renderPins, 80); };
-    kakao.maps.event.addListener(kakaoMap, 'zoom_changed', refresh);
-    kakao.maps.event.addListener(kakaoMap, 'dragend', refresh);
-    initProvincePolygons();
-    renderPins();
-  });
+  } catch(e) {
+    console.error('[initMap] Map 생성 실패:', e);
+    kakaoMap = null;
+    return;
+  }
+
+  // 줌·드래그 종료 시 핀 갱신 (debounce)
+  const refresh = () => { clearTimeout(renderTimer); renderTimer = setTimeout(renderPins, 80); };
+  kakao.maps.event.addListener(kakaoMap, 'zoom_changed', refresh);
+  kakao.maps.event.addListener(kakaoMap, 'dragend', refresh);
+
+  initProvincePolygons();
+  renderPins();
 }
 
 /* ══ 시도 경계선 Polygon ══ */
@@ -2049,7 +2077,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.43';
+const APP_VERSION = 'v5.44';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
