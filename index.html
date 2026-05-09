@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.38 | Deployed: 2026-05-09 20:22:21 -->
+<!-- Version: v5.39 | Deployed: 2026-05-09 20:34:07 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v31_gemini -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -163,7 +163,7 @@ select:focus{border-color:var(--teal)}
 .pb.g{background:#1D9E75}.pb.g::after{border-top-color:#1D9E75}
 .pb.y{background:#BA7517}.pb.y::after{border-top-color:#BA7517}
 .pb.r{background:#E24B4A}.pb.r::after{border-top-color:#E24B4A}
-.pb.fav{background:#c0392b}.pb.fav::after{border-top-color:#c0392b}
+.pb.fav{background:#D4920A}.pb.fav::after{border-top-color:#D4920A}
 .pb.dot.g,.pb.dot.y,.pb.dot.r,.pb.dot.fav{border:1.5px solid rgba(255,255,255,.7)}
 /* ── 선택 핀 펄스 링 ── */
 @keyframes pinPulse1{
@@ -181,7 +181,7 @@ select:focus{border-color:var(--teal)}
 .pin-ring2{border:1.5px solid #1D9E75}
 .pin.sel .pin-ring {animation:pinPulse1 1.5s ease-out infinite}
 .pin.sel .pin-ring2{animation:pinPulse2 1.5s ease-out .45s infinite}
-.mleg{position:absolute;bottom:46px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd)}
+.mleg{position:absolute;bottom:52px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd);z-index:9}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
@@ -441,7 +441,7 @@ a.link-btn{display:inline-flex}
           <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
           <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
           <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
-          <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>
+          <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>
         </div>
         <div class="srcpanel">
           <b>데이터 출처</b>
@@ -1241,18 +1241,20 @@ function renderPins(){
     const isFav=favs.has(c.id);
     const {rain,icon,cls:wxCls,text:wxText}=getPinWeather(c,tlDayIdx);
     const cls=isFav?'fav':wxCls;
-    const valStr=wxText;
 
     let label='', pbExtra='';
-    if(pinMode==='dot'){
-      pbExtra=' dot';
-    } else if(pinMode==='mini'){
-      pbExtra=' mini'; label=isFav?'♥':icon;
-    } else if(pinMode==='pill'){
-      label=(isFav?'♥ ':'')+`${icon} ${valStr}`;
+    if(isFav){
+      // 찜 핀: 날씨 무관, ♥ + 이름 고정 (골드색)
+      if(pinMode==='dot'){ pbExtra=' dot'; }
+      else if(pinMode==='mini'){ pbExtra=' mini'; label='♥'; }
+      else if(pinMode==='pill'){ const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name; label=`♥ ${nm}`; }
+      else { const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name; label=`♥ ${nm}`; }
     } else {
-      const nm=c.name.length>4?c.name.slice(0,4)+'…':c.name;
-      label=(isFav?'♥ ':'')+nm+` ${icon} ${valStr}`;
+      // 일반 핀: 날씨 상태 표시
+      if(pinMode==='dot'){ pbExtra=' dot'; }
+      else if(pinMode==='mini'){ pbExtra=' mini'; label=icon; }
+      else if(pinMode==='pill'){ label=`${icon} ${wxText}`; }
+      else { const nm=c.name.length>4?c.name.slice(0,4)+'…':c.name; label=`${nm} ${icon} ${wxText}`; }
     }
 
     if(pinNodes[c.id]){
@@ -1571,8 +1573,11 @@ function parseKma(data){
     const rain=Math.max(...Object.values(tm).map(t=>parseInt(t.POP||0)));
     const wsdVals=Object.values(tm).map(t=>parseFloat(t.WSD||0)).filter(v=>v>0);
     const wsd=wsdVals.length?Math.round(wsdVals.reduce((a,b)=>a+b,0)/wsdVals.length*10)/10:0;
-    const pty=parseInt(noon.PTY||0),sky=parseInt(noon.SKY||1);
-    const icon=pty>=1?'🌧':sky>=4?'☁':sky>=3?'⛅':'☀';
+    const pty=parseInt(noon.PTY??0),sky=parseInt(noon.SKY??1);
+    // PTY 우선: 0=없음→SKY 사용, 3/7=눈, 나머지(1비·2진눈깨비·4소나기·5빗방울·6빗방울눈날림)=비
+    const icon = pty===0  ? (sky>=4?'☁':sky>=3?'⛅':'☀')
+               : (pty===3||pty===7) ? '❄'
+               : '🌧';
     const d=new Date(ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8));
     result.push({dow:DAYS[d.getDay()],date:ds.slice(4,6)+'/'+ds.slice(6,8),
       wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo,wsd});
@@ -1933,9 +1938,10 @@ function getPinWeather(c, dayIdx) {
     rain = day.rain;
     icon = day.icon;
   } else {
+    // 날씨 미조회 상태 — 보수적 기본값 (비 아이콘 제거, 실제 API 미적용)
     const seed = Math.abs(Math.sin((c.lat||37)*73.1 + (c.lng||127)*37.9 + dayIdx*17.3)) * 100;
-    rain = Math.floor(seed) % 60 + 5;
-    icon = rain > 50 ? '🌧' : rain > 30 ? '⛅' : '☀';
+    rain = Math.floor(seed) % 25;          // 최대 24% — 비 임계(40%) 미만 유지
+    icon = rain > 12 ? '⛅' : '☀';        // 맑음·구름조금만 표시
   }
   const cls = rain >= 40 ? 'r' : rain >= 20 ? 'y' : 'g';
   const text = WX_TEXT[icon] || '맑음';
@@ -1953,13 +1959,13 @@ function setMapWeatherMode(mode) {
         <div><span class="ldot" style="background:#1D9E75"></span>약풍 5m/s 미만</div>
         <div><span class="ldot" style="background:#BA7517"></span>5~9m/s</div>
         <div><span class="ldot" style="background:#E24B4A"></span>강풍 9m/s 이상</div>
-        <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
+        <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>`;
     } else {
       leg.innerHTML = `
         <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
         <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
         <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
-        <div><span class="ldot" style="background:#c0392b"></span>찜한 캠핑장</div>`;
+        <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>`;
     }
   }
   renderPins();
