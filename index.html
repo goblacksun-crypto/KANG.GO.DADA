@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.55 | Deployed: 2026-05-10 17:46:34 -->
+<!-- Version: v5.56 | Deployed: 2026-05-10 18:19:15 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -288,6 +288,23 @@ a.link-btn{display:inline-flex}
 .tl-step-btn:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
 .wx-mode-btn{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
 .wx-mode-btn.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
+/* ── 시간별 예보 뷰 ── */
+.hourly-wrap{overflow-x:auto;border-radius:var(--rs);background:var(--bg);border:1px solid var(--bd);margin-top:4px}
+.hourly-scroll{display:flex;min-width:max-content}
+.hslot{display:flex;flex-direction:column;align-items:center;min-width:48px;padding:5px 2px;border-right:1px solid var(--bd);gap:2px;text-align:center;font-size:9px}
+.hslot:last-child{border-right:none}
+.hslot.h-today{background:rgba(29,158,117,.05)}
+.hday-label{width:calc(100% + 4px);font-size:8px;font-weight:700;background:var(--teal);color:#fff;border-radius:3px 3px 0 0;padding:2px 0;text-align:center;margin:-5px -2px 3px -2px;white-space:nowrap}
+.hday-blank{height:17px}
+.htime{font-size:10px;font-weight:600;color:var(--t1)}
+.hwx{font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px;color:#fff;line-height:1.4}
+.htmp{font-size:11px;font-weight:700;color:var(--text)}
+.hpop{color:var(--rain)}
+.hwsd{color:var(--t2)}
+.hreh{color:var(--t3)}
+.hrow-label{font-size:7px;color:var(--t3)}
+.view-toggle-btn{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--teal);background:var(--bg2);color:var(--teal);cursor:pointer;white-space:nowrap;transition:all .15s}
+.view-toggle-btn.active{background:var(--teal);color:#fff}
 
 /* ── 서울 실시간 대기질 섹션 ── */
 .seoul-air-sec{padding:10px 12px;border-top:1px solid var(--bd);background:linear-gradient(135deg,#f0f9ff 0%,#e8f5f0 100%)}
@@ -486,8 +503,10 @@ a.link-btn{display:inline-flex}
           <button class="tl-step-btn" onclick="stepTimeline(1)" title="하루 이후">▶</button>
           <div class="tl-date" id="tlDate">3주 예보 탐색</div>
           <div class="wx-mode-btns">
-            <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
-            <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
+            <button id="wxModeWx"    class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">날씨</button>
+            <button id="wxModeRain"  class="wx-mode-btn"    onclick="setMapWeatherMode('rain')">강수</button>
+            <button id="wxModeWind"  class="wx-mode-btn"    onclick="setMapWeatherMode('wind')">바람</button>
+            <button id="wxModeHumid" class="wx-mode-btn"    onclick="setMapWeatherMode('humid')">습도</button>
           </div>
           <!-- 날씨 출처는 좌측 사이드바로 이동 -->
         </div>
@@ -782,7 +801,8 @@ function clearCampCache() {
   loadData();
 }
 let wxSrc = '기상청';
-let wxCache = {};      // id → w14 배열
+let wxCache = {};      // id → 일별 21일 배열
+let wxHourly = {};     // id → 시간별 3일 배열 (3시간 간격)
 let kakaoMap = null;         // 카카오맵 인스턴스
 let pinOverlays = {};        // id → kakao.maps.CustomOverlay
 let renderTimer = null;      // debounce 타이머
@@ -1238,18 +1258,18 @@ function renderPins(){
   toRender.forEach(c=>{
     const isFav=favs.has(c.id);
     const isSel=selId===c.id;
-    const {short,cls:wxCls,isWind,rain:wxRain}=getPinWeather(c,tlDayIdx);
+    const {short,cls:wxCls,isWind,isRain,isHumid,rain:wxRain}=getPinWeather(c,tlDayIdx);
     const cls=wxCls;
     const selCls=isSel?' sel':'';
 
     // ── 라벨: 이모지 없음, 한글 텍스트 + 이름으로 통일 ──
-    // dot: 색깔만 / mini: 한글 2자 / pill·full: "날씨·이름"
     let label='', pbExtra='';
+    const isNumeric = isWind||isRain||isHumid;
     if(pinMode==='dot'){
       pbExtra=' dot';
     } else if(pinMode==='mini'){
       pbExtra=' mini';
-      label = isWind ? `${wxRain}m` : short; // 풍속m 또는 맑음/비/눈…
+      label = isWind ? `${wxRain}m` : short;
     } else if(pinMode==='pill'){
       const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name;
       label = isWind ? `${wxRain}m/s · ${nm}` : `${short} · ${nm}`;
@@ -1552,10 +1572,14 @@ function parseKma(data){
   if(!items)return null;
   const arr=Array.isArray(items)?items:[items];
   const byDay={};
+  const slots={}; // YYYYMMDD_HHMM → 시간별 슬롯
   arr.forEach(it=>{
     const d=it.fcstDate;if(!byDay[d])byDay[d]={};
     const t=it.fcstTime;if(!byDay[d][t])byDay[d][t]={};
     byDay[d][t][it.category]=it.fcstValue;
+    const key=d+'_'+t;
+    if(!slots[key])slots[key]={date:d,time:t};
+    slots[key][it.category]=it.fcstValue;
   });
   const DAYS=['일','월','화','수','목','금','토'];
   const result=[];
@@ -1568,6 +1592,8 @@ function parseKma(data){
     const rain=Math.max(...Object.values(tm).map(t=>parseInt(t.POP||0)));
     const wsdVals=Object.values(tm).map(t=>parseFloat(t.WSD||0)).filter(v=>v>0);
     const wsd=wsdVals.length?Math.round(wsdVals.reduce((a,b)=>a+b,0)/wsdVals.length*10)/10:0;
+    const rehVals=Object.values(tm).map(t=>parseInt(t.REH||0)).filter(v=>v>0);
+    const reh=rehVals.length?Math.round(rehVals.reduce((a,b)=>a+b,0)/rehVals.length):50;
     const pty=parseInt(noon.PTY??0),sky=parseInt(noon.SKY??1);
     // 하루 전체 최대 PTY — 저녁·야간 강수도 감지 (낮 맑아도 강수확률↑이면 비 아이콘)
     const maxPty=Math.max(0,...Object.values(tm).map(t=>parseInt(t.PTY||0)));
@@ -1577,7 +1603,7 @@ function parseKma(data){
                : '🌧';
     const d=new Date(ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8));
     result.push({dow:DAYS[d.getDay()],date:ds.slice(4,6)+'/'+ds.slice(6,8),
-      wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo,wsd});
+      wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo,wsd,reh});
   });
   // 3일→21일 추정 보완
   while(result.length<21){
@@ -1592,7 +1618,30 @@ function parseKma(data){
       hi:(last.hi||15)+(Math.floor(Math.random()*4)-2),
       lo:(last.lo||7)+(Math.floor(Math.random()*4)-2),wsd:wv});
   }
-  return result.slice(0,21);
+  // ── 시간별 슬롯 (3일 × ~8타임 = 최대 24슬롯) ──────────────
+  const DAYS2=['일','월','화','수','목','금','토'];
+  const hours=Object.values(slots)
+    .sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time))
+    .slice(0,72)
+    .map(s=>{
+      const pty=parseInt(s.PTY||0),sky=parseInt(s.SKY||1);
+      const effPty=pty>0?pty:0;
+      const icon=effPty===0?(sky>=4?'☁':sky>=3?'⛅':'☀'):(effPty===3||effPty===7?'❄':'🌧');
+      const d2=new Date(s.date.slice(0,4)+'-'+s.date.slice(4,6)+'-'+s.date.slice(6,8));
+      return{
+        date:s.date.slice(4,6)+'/'+s.date.slice(6,8),
+        dow:DAYS2[d2.getDay()],
+        time:s.time.slice(0,2)+'시',
+        tmp:parseFloat(s.TMP||s.T1H||0),
+        pop:parseInt(s.POP||0),
+        pty,sky,icon,
+        wsd:parseFloat(s.WSD||0),
+        vec:parseInt(s.VEC||0),
+        reh:parseInt(s.REH||0),
+      };
+    });
+
+  return {days:result.slice(0,21), hours};
 }
 function wxVariance(data,src){
   if(!data||src==='기상청')return data;
@@ -1626,14 +1675,16 @@ async function selectCamp(id){
     renderDetail(c,null,true);
     if(c.lat&&c.lng){
       try{
-        const w=await fetchWeather(c.lat,c.lng);
-        if(selId!==reqId)return;  // 다른 캠핑장이 선택됐으면 결과 폐기
-        wxCache[id]=w||makeFallbackW(c);
+        const res=await fetchWeather(c.lat,c.lng);
+        if(selId!==reqId)return;
+        wxCache[id]  = res?.days  || makeFallbackW(c);
+        wxHourly[id] = res?.hours || [];
       }catch{
         if(selId!==reqId)return;
         wxCache[id]=makeFallbackW(c);
+        wxHourly[id]=[];
       }
-    }else wxCache[id]=makeFallbackW(c);
+    }else{ wxCache[id]=makeFallbackW(c); wxHourly[id]=[]; }
   }
   if(selId!==reqId)return;  // 캐시 히트 경로도 체크
   // rain 값 업데이트
@@ -1731,10 +1782,16 @@ function renderDetail(c,wx,loading=false){
       </div>
     </div>
     <div class="wsec">
-      <div class="wshdr"><div class="wstitle">21일 날씨 예보</div><span style="font-size:9px;color:var(--t3)">기상청 단기예보</span></div>
-      <div class="wklabel">이번 주</div><div class="wgrid">${wdH(w1,0)}</div>
-      <div class="wklabel" style="margin-top:6px">2주차</div><div class="wgrid">${wdH(w2,7)}</div>
-      ${w3.length?`<div class="wklabel" style="margin-top:6px">3주차</div><div class="wgrid">${wdH(w3,14)}</div>`:''}
+      <div class="wshdr">
+        <div class="wstitle">날씨 예보 (21일)</div>
+        <button class="view-toggle-btn" id="hourlyToggleBtn" onclick="toggleHourlyView('${c.id}')">⏱ 시간별</button>
+      </div>
+      <div id="dailyForecastView">
+        <div class="wklabel">이번 주</div><div class="wgrid">${wdH(w1,0)}</div>
+        <div class="wklabel" style="margin-top:6px">2주차</div><div class="wgrid">${wdH(w2,7)}</div>
+        ${w3.length?`<div class="wklabel" style="margin-top:6px">3주차</div><div class="wgrid">${wdH(w3,14)}</div>`:''}
+      </div>
+      <div id="hourlyForecastView" style="display:none">${renderHourlySection(wxHourly[c.id]||[])}</div>
     </div>`:''}
     <div class="dhdr">
       <div class="dhdr-top">
@@ -1784,6 +1841,52 @@ function renderDetail(c,wx,loading=false){
 }
 
 let sbWxSrc = '기상청';
+
+/* ══ 시간별 예보 렌더 ══ */
+function renderHourlySection(hours) {
+  if (!hours || !hours.length) return '<div style="padding:12px;text-align:center;color:var(--t3);font-size:11px">시간별 데이터 없음 (캠핑장 클릭 후 기상청 API 로드 필요)</div>';
+  const WX_CLS={'☀':'g','⛅':'y','☁':'c','🌧':'wr','❄':'ws','🌨':'ws'};
+  let prevDate='', html='';
+  hours.forEach((h,i)=>{
+    const isNew=h.date!==prevDate;
+    prevDate=h.date;
+    const wxCls=WX_CLS[h.icon]||'g';
+    const WX_S={'☀':'맑음','⛅':'구름','☁':'흐림','🌧':'비','❄':'눈','🌨':'눈'};
+    const wxTxt=WX_S[h.icon]||'맑음';
+    const popColor=h.pop>=40?'var(--rain)':h.pop>=20?'var(--amber)':'var(--t3)';
+    const wsdColor=h.wsd>=9?'var(--red)':h.wsd>=5?'var(--amber)':'var(--t3)';
+    html+=`<div class="hslot${i===0?' h-today':''}">
+      ${isNew?`<div class="hday-label">${h.date}(${h.dow})</div>`:'<div class="hday-blank"></div>'}
+      <div class="htime">${h.time}</div>
+      <div class="hwx pb ${wxCls}" style="font-size:9px;padding:1px 4px">${wxTxt}</div>
+      <div class="htmp">${h.tmp}°</div>
+      <div class="hpop" style="color:${popColor}">💧${h.pop}%</div>
+      <div class="hwsd" style="color:${wsdColor}">🌬${h.wsd}m</div>
+      <div class="hreh">💦${h.reh}%</div>
+    </div>`;
+  });
+  return `<div class="hourly-wrap"><div class="hourly-scroll">${html}</div></div>
+    <div style="font-size:9px;color:var(--t3);padding:3px 2px">💧강수확률 &nbsp;🌬풍속(m/s) &nbsp;💦습도</div>`;
+}
+
+function toggleHourlyView(campId) {
+  const daily  = document.getElementById('dailyForecastView');
+  const hourly = document.getElementById('hourlyForecastView');
+  const btn    = document.getElementById('hourlyToggleBtn');
+  if (!daily || !hourly) return;
+  const isHourly = hourly.style.display !== 'none';
+  daily.style.display  = isHourly ? '' : 'none';
+  hourly.style.display = isHourly ? 'none' : '';
+  if (btn) {
+    btn.textContent = isHourly ? '⏱ 시간별' : '📅 일별';
+    btn.classList.toggle('active', !isHourly);
+  }
+  // 시간별 뷰 최초 전환 시 데이터 갱신
+  if (!isHourly && campId) {
+    const hours = wxHourly[campId] || [];
+    hourly.innerHTML = renderHourlySection(hours);
+  }
+}
 
 function updateSbWx(c,wx,loading){
   const el = document.getElementById('sbWx');
@@ -1928,6 +2031,26 @@ const WX_SHORT = {'☀':'맑음','⛅':'구름','☁':'흐림','🌧':'비','❄
 
 function getPinWeather(c, dayIdx) {
   const day = wxCache[c.id]?.[dayIdx];
+
+  // ── 강수(%) 모드 ──────────────────────────────────────────
+  if (mapWeatherMode === 'rain') {
+    const seed=Math.abs(Math.sin((c.lat||37)*73.1+(c.lng||127)*37.9+dayIdx*17.3))*100;
+    const pop = day?.rain ?? Math.floor(seed)%25;
+    const short=`${pop}%`;
+    const cls=pop>=40?'wr':pop>=20?'y':'g';
+    return {rain:pop, icon:short, short, cls, text:`강수 ${pop}%`, isRain:true};
+  }
+
+  // ── 습도(%) 모드 ──────────────────────────────────────────
+  if (mapWeatherMode === 'humid') {
+    const seed=Math.abs(Math.sin((c.lat||37)*91.3+(c.lng||127)*53.7+dayIdx*23.1))*100;
+    const reh = day?.reh ?? 40+Math.floor(seed)%40;
+    const short=`${reh}%`;
+    const cls=reh>=80?'wr':reh>=60?'y':'g';
+    return {rain:reh, icon:short, short, cls, text:`습도 ${reh}%`, isHumid:true};
+  }
+
+  // ── 바람 모드 ──────────────────────────────────────────────
   if (mapWeatherMode === 'wind') {
     let wsd;
     if (day) {
@@ -1936,7 +2059,6 @@ function getPinWeather(c, dayIdx) {
       const seed = Math.abs(Math.sin((c.lat||37)*53.1 + (c.lng||127)*29.7 + dayIdx*11.3)) * 10;
       wsd = Math.round(seed * 10) / 10;
     }
-    // 이모지 제거 → 풍속 단계 텍스트
     const short = wsd >= 9 ? '강풍' : wsd >= 5 ? '바람' : '약풍';
     const cls   = wsd >= 9 ? 'r'   : wsd >= 5 ? 'y'   : 'g';
     return { rain: wsd, icon: short, short, cls, text: `${wsd}m/s`, isWind: true };
@@ -1985,25 +2107,29 @@ function setMapWxSrc(src) { setAllWxSrc(src); }
 
 function setMapWeatherMode(mode) {
   mapWeatherMode = mode;
-  document.getElementById('wxModeWx').classList.toggle('on', mode === 'wx');
-  document.getElementById('wxModeWind').classList.toggle('on', mode === 'wind');
+  ['wx','rain','wind','humid'].forEach(m=>{
+    const el=document.getElementById('wxMode'+m.charAt(0).toUpperCase()+m.slice(1));
+    if(el) el.classList.toggle('on', m===mode);
+  });
   const leg = document.querySelector('.mleg');
   if (leg) {
-    const favLegend = `<div><span style="font-size:12px;color:#E24B4A;margin-right:5px">❤</span>찜한 캠핑장</div>`;
-    if (mode === 'wind') {
-      leg.innerHTML = `
-        <div><span class="ldot" style="background:#1D9E75"></span>약풍 5m/s 미만</div>
-        <div><span class="ldot" style="background:#BA7517"></span>5~9m/s</div>
-        <div><span class="ldot" style="background:#E24B4A"></span>강풍 9m/s 이상</div>
-        ${favLegend}`;
-    } else {
-      leg.innerHTML = `
-        <div><span class="ldot" style="background:#1D9E75"></span>맑음</div>
-        <div><span class="ldot" style="background:#BA7517"></span>구름 / 흐림</div>
-        <div><span class="ldot" style="background:var(--rain)"></span>비</div>
-        <div><span class="ldot" style="background:var(--snow)"></span>눈</div>
-        ${favLegend}`;
-    }
+    const fav=`<div><span style="font-size:12px;color:#E24B4A;margin-right:5px">❤</span>찜한 캠핑장</div>`;
+    const legends={
+      wx:`<div><span class="ldot" style="background:#1D9E75"></span>맑음</div>
+          <div><span class="ldot" style="background:#BA7517"></span>구름/흐림</div>
+          <div><span class="ldot" style="background:var(--rain)"></span>비</div>
+          <div><span class="ldot" style="background:var(--snow)"></span>눈</div>`,
+      rain:`<div><span class="ldot" style="background:#1D9E75"></span>강수 20% 미만</div>
+            <div><span class="ldot" style="background:#BA7517"></span>20~40%</div>
+            <div><span class="ldot" style="background:var(--rain)"></span>40% 이상</div>`,
+      wind:`<div><span class="ldot" style="background:#1D9E75"></span>약풍 ~5m/s</div>
+            <div><span class="ldot" style="background:#BA7517"></span>5~9m/s</div>
+            <div><span class="ldot" style="background:#E24B4A"></span>강풍 9m/s↑</div>`,
+      humid:`<div><span class="ldot" style="background:#1D9E75"></span>습도 ~60%</div>
+             <div><span class="ldot" style="background:#BA7517"></span>60~80%</div>
+             <div><span class="ldot" style="background:var(--rain)"></span>80% 이상</div>`,
+    };
+    leg.innerHTML=(legends[mode]||legends.wx)+fav;
   }
   renderPins();
 }
@@ -2141,7 +2267,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.55';
+const APP_VERSION = 'v5.56';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
