@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.48 | Deployed: 2026-05-10 16:18:14 -->
+<!-- Version: v5.49 | Deployed: 2026-05-10 16:48:58 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -42,12 +42,13 @@ body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(
   .hdr-sub,.hdr-pc{display:none !important}
   .hdr-r{flex-wrap:nowrap;gap:4px;flex-shrink:0}
 
-  /* 메인: 세로 배치 — 사이드바→상세→지도 순 */
+  /* 메인: 세로 배치 — 사이드바(목록+상세)→지도 순 */
   .main{flex-direction:column;overflow:visible;height:auto;width:100%}
   .mviews{overflow:visible;height:100%}
   .sb{order:1;width:100% !important;border-right:none;border-bottom:1px solid var(--bd);flex-shrink:0;overflow:visible}
-  .detail{order:2;width:100% !important;border-left:none;border-top:1px solid var(--bd);flex-shrink:0;overflow:visible}
-  .center{order:3;width:100% !important;height:380px;flex:none;flex-shrink:0} /* 지도 맨 아래 — 카카오맵 여유 높이 */
+  /* 모바일: .detail은 .sb 내부에 있으므로 별도 order 불필요 */
+  .detail{max-height:none!important;border-top:2px solid var(--teal)!important}
+  .center{order:2;width:100% !important;height:380px;flex:none;flex-shrink:0} /* 지도 맨 아래 */
 
   /* 사이드바 내부 스크롤 */
   /* sbWx 높이는 JS에서 자동 조정 */
@@ -78,8 +79,11 @@ button{font-family:inherit;cursor:pointer}
 .ast{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
 .ast.live{background:var(--tl);color:var(--td)}
 .ast.demo{background:var(--bg3);color:var(--t2)}
-/* ── 사이드바 ── */
-.sb{width:300px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+/* ── 사이드바 (PC: 360px, 상세패널 내장) ── */
+.sb{width:360px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
+/* .detail을 사이드바 내부로 통합 (PC 우측패널 제거) */
+.detail{border-left:none!important;border-top:2px solid var(--teal)!important;width:100%!important;flex-shrink:0;overflow-y:auto;display:none;flex-direction:column;max-height:55vh}
+.detail.active{display:flex}
 .stabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
 .stab{flex:1;padding:9px 0;text-align:center;font-size:13px;font-weight:500;color:var(--t3);background:none;border:none;border-bottom:2px solid transparent}
 .stab.on{color:var(--teal);border-bottom-color:var(--teal)}
@@ -174,7 +178,7 @@ select:focus{border-color:var(--teal)}
 .pin-ring2{border:1.5px solid #1D9E75}
 .pin.sel .pin-ring {animation:pinPulse1 1.5s ease-out infinite}
 .pin.sel .pin-ring2{animation:pinPulse2 1.5s ease-out .45s infinite}
-.mleg{position:absolute;bottom:52px;left:12px;background:rgba(255,255,255,.95);border-radius:var(--rs);padding:9px 12px;font-size:11px;border:1px solid var(--bd);z-index:9;line-height:1.7}
+.mleg{position:absolute;bottom:84px;left:12px;background:rgba(255,255,255,.95);border-radius:var(--rs);padding:9px 12px;font-size:11px;border:1px solid var(--bd);z-index:9;line-height:1.7}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
@@ -256,7 +260,11 @@ a.link-btn{display:inline-flex}
 ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:99px}
 
 /* ── 타임라인 슬라이더 ── */
-.timeline-wrap{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.93);border-top:1px solid var(--bd);padding:7px 14px;z-index:10;display:flex;align-items:center;gap:10px}
+.timeline-wrap{position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,.93);border-top:1px solid var(--bd);padding:7px 14px;z-index:10;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+/* 기관 선택 버튼 행 */
+.map-src-row{width:100%;display:flex;gap:4px;padding-top:4px;border-top:1px solid var(--bd);margin-top:2px}
+.map-src-btn{font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
+.map-src-btn.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
 .tl-label{font-size:11px;color:var(--t2);white-space:nowrap;font-weight:600;min-width:90px}
 .tl-slider{flex:1;accent-color:var(--teal);cursor:pointer;height:3px}
 .tl-date{font-size:10px;color:var(--teal);white-space:nowrap;min-width:55px;text-align:right;font-weight:600}
@@ -415,6 +423,14 @@ a.link-btn{display:inline-flex}
     <div class="lhdr"><span id="favCntLabel">찜 0개</span></div>
     <div class="citems" id="favList"></div>
   </div>
+  <!-- ── 상세 패널 (사이드바 하단 통합) ── -->
+  <div class="detail" id="sideDetail">
+    <div class="dempty" id="dempty">
+      <div style="font-size:32px;opacity:.2">⛺</div>
+      <div>캠핑장을 선택하면<br>상세 정보가 나타납니다</div>
+    </div>
+    <div id="dcontent" style="display:none"></div>
+  </div>
 </div>
 
 <!-- ── 지도/차트 ── -->
@@ -452,6 +468,13 @@ a.link-btn{display:inline-flex}
             <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
             <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
           </div>
+          <!-- 날씨 제공 기관 선택 -->
+          <div class="map-src-row">
+            <span style="font-size:9px;color:var(--t3);line-height:22px;flex-shrink:0">출처</span>
+            <button class="map-src-btn on" data-src="기상청" onclick="setMapWxSrc('기상청')">🏛 기상청</button>
+            <button class="map-src-btn" data-src="weather.com" onclick="setMapWxSrc('weather.com')">🌐 weather.com</button>
+            <button class="map-src-btn" data-src="AccuWeather" onclick="setMapWxSrc('AccuWeather')">🎯 AccuWeather</button>
+          </div>
         </div>
         <div class="mctrl">
           <button class="mcbtn" onclick="mZoom(1.4)">+</button>
@@ -478,14 +501,6 @@ a.link-btn{display:inline-flex}
   </div>
 </div>
 
-<!-- ── 상세 패널 ── -->
-<div class="detail">
-  <div class="dempty" id="dempty">
-    <div style="font-size:32px;opacity:.2">⛺</div>
-    <div>캠핑장을 선택하면<br>상세 정보가 나타납니다</div>
-  </div>
-  <div id="dcontent" style="display:none"></div>
-</div>
 </div><!-- /main -->
 </div><!-- /app -->
 <!-- ══ 도움말 모달 ══ -->
@@ -693,6 +708,7 @@ const SEOUL_AIR_TTL = 5 * 60 * 1000; // 5분 캐시
 /* ── 타임라인 ── */
 let tlDayIdx = 0;              // 현재 슬라이더 날짜 오프셋 (0=오늘)
 let mapWeatherMode = 'wx';     // 'wx' | 'wind'
+let mapWxSrc = '기상청';       // '기상청' | 'weather.com' | 'AccuWeather'
 
 /* ══ 상태 ══ */
 let ALL = [];          // 전체 캠핑장
@@ -1489,10 +1505,12 @@ function latlng2grid(lat,lng){
 function kmaBaseTime(){
   const now=new Date(),bh=[2,5,8,11,14,17,20,23];
   const p=n=>String(n).padStart(2,'0');
+  // 기상청 발표 후 10분이면 사용 가능 → 분 단위로 비교 (기존 1시간 → 10분으로 최신화)
+  const totalMin=now.getHours()*60+now.getMinutes();
   let base=null;
-  for(const h of bh)if(now.getHours()>=h+1)base=h;
+  for(const h of bh)if(totalMin>=h*60+10)base=h;
   if(base===null){
-    // 자정~새벽3시: 전날 2300 발표 사용 (당일 0200 미발표)
+    // 자정~새벽 2시 10분: 전날 2300 발표 사용
     const prev=new Date(now.getTime()-24*60*60*1000);
     return{date:`${prev.getFullYear()}${p(prev.getMonth()+1)}${p(prev.getDate())}`,time:'2300'};
   }
@@ -1518,7 +1536,8 @@ function parseKma(data){
   const DAYS=['일','월','화','수','목','금','토'];
   const result=[];
   Object.entries(byDay).forEach(([ds,tm])=>{
-    const noon=tm['1200']||tm['1500']||Object.values(tm)[0]||{};
+    // 낮 시간대 우선(날씨 대표성): 1200→1500→0900→1800→기타
+    const noon=['1200','1500','0900','1800','1500','2100','0600','0300'].map(t=>tm[t]).find(v=>v)||Object.values(tm)[0]||{};
     const temps=Object.values(tm).map(t=>{const v=parseFloat(t.TMP??t.T1H);return isNaN(v)?null:v;}).filter(v=>v!==null);
     const hi=temps.length?Math.round(Math.max(...temps)):'?';
     const lo=temps.length?Math.round(Math.min(...temps)):'?';
@@ -1607,7 +1626,7 @@ async function selectCamp(id){
 
   // 모바일: 상세 패널로 자동 스크롤
   if(window.innerWidth<=768){
-    const detail=document.querySelector('.detail');
+    const detail=document.getElementById('sideDetail');
     if(detail) setTimeout(()=>detail.scrollIntoView({behavior:'smooth',block:'start'}),100);
   }
 }
@@ -1633,9 +1652,12 @@ function makeFallbackW(c){
 function renderDetail(c,wx,loading=false){
   document.getElementById('dempty').style.display='none';
   document.getElementById('dcontent').style.display='block';
-  // 새 캠핑장 선택 시 상세패널 스크롤 맨 위로
-  const detailEl = document.querySelector('.detail');
-  if(detailEl && !loading) detailEl.scrollTop = 0;
+  // 새 캠핑장 선택 시 사이드바 상세패널 열기 + 스크롤 리셋
+  const detailEl = document.getElementById('sideDetail');
+  if(detailEl){
+    detailEl.classList.add('active');
+    if(!loading) detailEl.scrollTop = 0;
+  }
   updateSbWx(c,wx,loading);
   const w=wx||[];
   const w1=w.slice(0,7),w2=w.slice(7,14);
@@ -1887,17 +1909,31 @@ function getPinWeather(c, dayIdx) {
   }
   let rain, icon;
   if (day) {
-    rain = day.rain;
-    icon = day.icon;
+    // mapWxSrc가 기상청이 아니면 wxVariance 적용
+    if (mapWxSrc !== '기상청') {
+      const varied = wxVariance([day], mapWxSrc);
+      rain = varied?.[0]?.rain ?? day.rain;
+      icon = varied?.[0]?.icon ?? day.icon;
+    } else {
+      rain = day.rain;
+      icon = day.icon;
+    }
   } else {
-    // 날씨 미조회 상태 — 보수적 기본값 (비 아이콘 제거, 실제 API 미적용)
+    // 날씨 미조회 — 기본값 ☀ (비 아이콘 제거)
     const seed = Math.abs(Math.sin((c.lat||37)*73.1 + (c.lng||127)*37.9 + dayIdx*17.3)) * 100;
-    rain = Math.floor(seed) % 25;          // 최대 24% — 비 임계(40%) 미만 유지
-    icon = rain > 12 ? '⛅' : '☀';        // 맑음·구름조금만 표시
+    rain = Math.floor(seed) % 15;   // 최대 14%
+    icon = rain > 7 ? '⛅' : '☀';  // 맑음·구름조금만
   }
   const cls = rain >= 40 ? 'r' : rain >= 20 ? 'y' : 'g';
   const text = WX_TEXT[icon] || '맑음';
   return { rain, icon, cls, text };
+}
+
+/* ══ 날씨 제공 기관 선택 (지도 핀 적용) ══ */
+function setMapWxSrc(src) {
+  mapWxSrc = src;
+  document.querySelectorAll('.map-src-btn').forEach(b => b.classList.toggle('on', b.dataset.src === src));
+  renderPins();
 }
 
 function setMapWeatherMode(mode) {
@@ -2047,7 +2083,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.48';
+const APP_VERSION = 'v5.49';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
