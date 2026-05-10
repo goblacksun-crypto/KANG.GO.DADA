@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.60 | Deployed: 2026-05-10 22:23:58 -->
+<!-- Version: v5.60 | Deployed: 2026-05-10 22:36:54 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -173,7 +173,7 @@ select:focus{border-color:var(--teal)}
 /* ── 찜 핀 ❤️ 뱃지 (핀 우상단 오버레이) ── */
 .fav-badge{position:absolute;top:-5px;right:-5px;font-size:10px;line-height:1;pointer-events:none;z-index:5;
   background:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 1px 3px rgba(0,0,0,.35)}
+  box-shadow:0 1px 3px rgba(0,0,0,.35);color:#E24B4A}
 /* ── 선택 핀 펄스 링 ── */
 @keyframes pinPulse1{
   0%  {transform:translate(-50%,-50%) scale(.85);opacity:.8}
@@ -194,7 +194,7 @@ select:focus{border-color:var(--teal)}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
-.mctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px}
+.mctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px;z-index:10}
 .mtype-btn.on{background:var(--teal)!important;color:#fff!important;border-color:var(--teal)!important}
 .mcbtn{width:30px;height:30px;background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .mtype-btn{width:auto!important;min-width:34px;padding:0 5px;font-size:10px!important;font-weight:600;letter-spacing:-0.2px}
