@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.46 | Deployed: 2026-05-10 15:13:55 -->
+<!-- Version: v5.47 | Deployed: 2026-05-10 15:40:22 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -7,8 +7,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>캠핑날씨 ⛺</title>
-<!-- 카카오맵 SDK: head에 정적 로드 (Referer 검증 통과, autoload=false 제거) -->
-<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=19def569114dcae1468eda1b595ef789"></script>
+<!-- 카카오맵 SDK: autoload=false = kakao 스텁 즉시 생성, maps.load()로 완전 초기화 -->
+<script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=19def569114dcae1468eda1b595ef789&autoload=false"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -713,7 +713,8 @@ const PROXIES = [
 
 /* ── 서울 열린데이터광장 (openAPI.seoul.go.kr) ── */
 const SEOUL_API_KEY = '6f714e544b6772613839746f517356';
-// HTTP 8088 (allorigins 프록시 경유) 가 HTTPS 5000보다 안정적
+// HTTP 8088은 HTTPS 페이지에서 Mixed Content 차단 → 프록시 경유만 사용
+// HTTPS 5000은 SSL 인증서 불안정 → 두 엔드포인트 모두 프록시 경유
 const SEOUL_AIR_ENDPOINTS = [
   `http://openAPI.seoul.go.kr:8088/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`,
   `https://openapi.seoul.go.kr:5000/${SEOUL_API_KEY}/json/RealtimeCityAir/1/25/`,
@@ -1115,58 +1116,58 @@ function _showMapError(msg) {
     </a>`;
 }
 
-/* ══ 카카오맵 초기화 ══
-   SDK는 <head>에 정적 로드 → DOMContentLoaded 전에 완료
-   컨테이너 높이 보장 후 new kakao.maps.Map() 직접 호출
-*/
+/* ══ 카카오맵 초기화 (Kakao 공식 패턴: autoload=false + kakao.maps.load()) ══ */
+let _kakaoInitTries = 0;
+
 function initMap() {
   if (kakaoMap) return;
 
-  // ① SDK 로드 확인 — 미로드면 에러 UI 표시
-  if (typeof kakao === 'undefined' || typeof kakao.maps === 'undefined') {
-    console.error('[initMap] kakao SDK 미정의 — 도메인 미등록 또는 네트워크 오류');
+  // ① kakao 스텁 대기 — Tracking Prevention이 스크립트 실행을 지연시킬 수 있음
+  //    최대 15회 × 200ms = 3초 재시도
+  if (typeof kakao === 'undefined') {
+    if (++_kakaoInitTries < 15) {
+      setTimeout(initMap, 200);
+      return;
+    }
+    // 3초 후에도 미정의 → 에러 표시
+    console.error('[initMap] kakao 미정의 — Kakao Console 도메인 등록 필요');
     _showMapError(
-      `<b>Kakao Developers Console</b>에서<br>` +
-      `현재 도메인 <b>${location.hostname}</b>을<br>` +
-      `플랫폼 → Web → 사이트 도메인에 추가 후 새로고침하세요.`
+      `<b>${location.hostname}</b> 도메인이<br>Kakao Developer Console에 미등록 상태입니다.<br><br>` +
+      `developers.kakao.com → 내 앱 → 플랫폼 → Web<br>사이트 도메인 추가 후 새로고침하세요.`
     );
-    setAst('● 지도 로드 실패','demo');
+    setAst('● 지도 로드 실패', 'demo');
     return;
   }
+  _kakaoInitTries = 0;
 
-  // ② 컨테이너 높이 보장 — 0px이면 레이아웃 완성 대기
+  // ② 컨테이너 높이 확인 — 0이면 minHeight 강제 후 재시도
   const container = document.getElementById('d3map');
   if (!container) return;
-
-  // 높이가 0이면 강제 설정 후 재시도
-  if (container.offsetHeight === 0) {
-    const parent = container.closest('.mapwrap') || container.parentElement;
-    if (parent) parent.style.minHeight = '400px';
+  if (!container.offsetHeight) {
     container.style.minHeight = '400px';
     setTimeout(initMap, 200);
     return;
   }
 
-  // ③ 지도 생성 — autoload=false 없으므로 new Map() 직접 사용
-  try {
-    kakaoMap = new kakao.maps.Map(container, {
-      center: new kakao.maps.LatLng(36.5, 128.0),
-      level: 13,
-      mapTypeId: kakao.maps.MapTypeId.ROADMAP
-    });
-  } catch(e) {
-    console.error('[initMap] Map 생성 오류:', e);
-    _showMapError(`지도 초기화 중 오류가 발생했습니다.<br><small>${e.message}</small>`);
-    return;
-  }
-
-  // ④ 이벤트 등록 및 렌더링
-  const refresh = () => { clearTimeout(renderTimer); renderTimer = setTimeout(renderPins, 80); };
-  kakao.maps.event.addListener(kakaoMap, 'zoom_changed', refresh);
-  kakao.maps.event.addListener(kakaoMap, 'dragend', refresh);
-
-  initProvincePolygons();
-  renderPins();
+  // ③ Kakao 공식 패턴: kakao.maps.load() 콜백에서 Map 생성
+  kakao.maps.load(function() {
+    try {
+      kakaoMap = new kakao.maps.Map(container, {
+        center: new kakao.maps.LatLng(36.5, 128.0),
+        level: 13,
+        mapTypeId: kakao.maps.MapTypeId.ROADMAP
+      });
+    } catch(e) {
+      console.error('[initMap] Map 생성 실패:', e);
+      _showMapError(`지도 초기화 오류<br><small style="color:#aaa">${e.message}</small>`);
+      return;
+    }
+    const refresh = () => { clearTimeout(renderTimer); renderTimer = setTimeout(renderPins, 80); };
+    kakao.maps.event.addListener(kakaoMap, 'zoom_changed', refresh);
+    kakao.maps.event.addListener(kakaoMap, 'dragend', refresh);
+    initProvincePolygons();
+    renderPins();
+  });
 }
 
 /* ══ 시도 경계선 Polygon ══ */
@@ -1384,12 +1385,11 @@ async function fetchSeoulAirQuality(siNm) {
     return seoulAirCache.data;
   }
 
-  // 2 엔드포인트 × 3 프록시 = 6개 시도를 Promise.any로 병렬 실행
-  // → 가장 먼저 성공한 응답 즉시 사용 (순차 최악 81초 → 단일 타임아웃으로 단축)
+  // 2 엔드포인트 × 2 프록시 = 4개 시도 (직접 호출 제거 — HTTPS Mixed Content 차단)
+  // allorigins/corsproxy는 서버사이드에서 HTTP→HTTPS 우회 가능
   const proxyWrappers = [
     u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => u,
   ];
 
   const attempts = SEOUL_AIR_ENDPOINTS.flatMap(ep =>
@@ -2100,7 +2100,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.46';
+const APP_VERSION = 'v5.47';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
