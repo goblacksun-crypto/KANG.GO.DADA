@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.60 | Deployed: 2026-05-10 22:36:54 -->
+<!-- Version: v5.61 | Deployed: 2026-05-10 22:48:00 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -364,6 +364,8 @@ a.link-btn{display:inline-flex}
   .mapwrap{overflow:hidden;flex:1}
   #d3map{touch-action:none}
   .timeline-wrap{position:relative;bottom:auto;flex-shrink:0}
+  /* mctrl: 모바일에서 우측→좌측으로 이동 (슬라이더 ▶ 버튼 겹침 방지) */
+  .mctrl{right:auto;left:10px}
 }
 </style>
 </head>
@@ -387,6 +389,21 @@ a.link-btn{display:inline-flex}
 <div class="main">
 <!-- ── 사이드바 ── -->
 <div class="sb">
+  <!-- 날씨 출처 선택 — 탭 바 위 공통 (검색·찜 탭 모두 표시) -->
+  <div id="wxSrcBar" style="padding:6px 10px;border-bottom:1px solid var(--bd);background:var(--bg3);flex-shrink:0">
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:3px">
+      <span style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">날씨</span>
+      <button class="all-src-btn on" data-src="기상청" onclick="setAllWxSrc('기상청')">🏛 기상청</button>
+      <button class="all-src-btn" data-src="Open-Meteo" onclick="setAllWxSrc('Open-Meteo')">🌍 오픈메테오</button>
+      <button class="all-src-btn" data-src="윈디" onclick="openExternalWx('windy')">🌬 윈디</button>
+      <button class="all-src-btn" data-src="구글" onclick="openExternalWx('google')">🔍 구글</button>
+      <button class="all-src-btn" data-src="네이버" onclick="openExternalWx('naver')">📍 네이버</button>
+    </div>
+    <div id="srcAccuracyNote" style="font-size:9px;color:var(--t3);line-height:1.5">
+      <span style="color:#1D9E75">✅ 기상청 실측: D+0~D+2 단기 + D+3~D+9 중기예보</span>
+    </div>
+  </div>
+
   <div class="stabs">
     <button class="stab on" onclick="showStab('search',this)">검색</button>
     <button class="stab" onclick="showStab('fav',this)">찜 <span id="favBadge" style="background:var(--rl);color:var(--red);border-radius:99px;padding:0 4px;font-size:10px;font-weight:700">0</span></button>
@@ -409,20 +426,6 @@ a.link-btn{display:inline-flex}
 
   <!-- 검색 탭 -->
   <div id="stab-search" style="display:flex;flex-direction:column;flex:none;overflow:visible">
-    <!-- 날씨 출처 선택 (지도 핀 + 상세패널 동시 반영) -->
-    <div style="padding:6px 10px;border-bottom:1px solid var(--bd);background:var(--bg3)">
-      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:4px">
-        <span style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">날씨</span>
-        <button class="all-src-btn on" data-src="기상청" onclick="setAllWxSrc('기상청')">🏛 기상청</button>
-        <button class="all-src-btn" data-src="Open-Meteo" onclick="setAllWxSrc('Open-Meteo')">🌍 오픈메테오</button>
-        <button class="all-src-btn" data-src="윈디" onclick="openExternalWx('windy')">🌬 윈디</button>
-        <button class="all-src-btn" data-src="구글" onclick="openExternalWx('google')">🔍 구글</button>
-        <button class="all-src-btn" data-src="네이버" onclick="openExternalWx('naver')">📍 네이버</button>
-      </div>
-      <div id="srcAccuracyNote" style="font-size:9px;color:var(--t3);line-height:1.6">
-        <span style="color:#1D9E75">✅ 기상청 실측: D+0~D+2 단기 + D+3~D+9 중기예보</span>
-      </div>
-    </div>
     <div class="sp">
       <div class="srow">
         <select id="selDo" onchange="onDoChange()">
@@ -468,7 +471,10 @@ a.link-btn{display:inline-flex}
 
   <!-- 찜 탭 -->
   <div id="stab-fav" style="display:none;flex-direction:column;flex:none;overflow:visible">
-    <div class="lhdr"><span id="favCntLabel">찜 0개</span></div>
+    <div class="lhdr">
+      <span id="favCntLabel">찜 0개</span>
+      <span style="font-size:10px;color:var(--t3)">클릭 → 날씨 상세</span>
+    </div>
     <div class="citems" id="favList"></div>
   </div>
   <!-- ── 상세 패널 (사이드바 하단 통합) ── -->
@@ -517,7 +523,7 @@ a.link-btn{display:inline-flex}
             oninput="onTimelineChange(parseInt(this.value))"
             onchange="onTimelineChange(parseInt(this.value))">
           <button class="tl-step-btn" onclick="stepTimeline(1)" title="하루 이후">▶</button>
-          <div class="tl-date" id="tlDate">3주 예보 탐색</div>
+          <div class="tl-date" id="tlDate">16일 예보 탐색</div>
           <div class="wx-mode-btns">
             <button id="wxModeWx"    class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">날씨</button>
             <button id="wxModeRain"  class="wx-mode-btn"    onclick="setMapWeatherMode('rain')">강수</button>
@@ -526,8 +532,8 @@ a.link-btn{display:inline-flex}
           </div>
           <!-- 핀 날씨 정확도 안내 -->
           <div class="map-src-row" style="font-size:9px;color:var(--t3);border-top:1px solid var(--bd);padding-top:3px;gap:8px">
-            <span style="color:#1D9E75">✅ 클릭 캠핑장: 기상청 실측(3일)</span>
-            <span style="color:#BA7517">⚠ 미클릭 핀: 추정값</span>
+            <span style="color:#1D9E75">✅ 선택 캠핑장: 기상청+Open-Meteo 실측 16일</span>
+            <span style="color:#BA7517">⚠ 미선택 핀: 위치 기반 추정</span>
           </div>
         </div>
         <div class="mctrl">
@@ -2529,7 +2535,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.60';
+const APP_VERSION = 'v5.61';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
