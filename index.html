@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.49 | Deployed: 2026-05-10 16:48:58 -->
+<!-- Version: v5.50 | Deployed: 2026-05-10 16:58:18 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -162,6 +162,10 @@ select:focus{border-color:var(--teal)}
 .pb.r{background:#E24B4A}.pb.r::after{border-top-color:#E24B4A}
 .pb.fav{background:#D4920A}.pb.fav::after{border-top-color:#D4920A}
 .pb.dot.g,.pb.dot.y,.pb.dot.r,.pb.dot.fav{border:1.5px solid rgba(255,255,255,.7)}
+/* ── 찜 핀 ❤️ 뱃지 (핀 우상단 오버레이) ── */
+.fav-badge{position:absolute;top:-5px;right:-5px;font-size:10px;line-height:1;pointer-events:none;z-index:5;
+  background:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.35)}
 /* ── 선택 핀 펄스 링 ── */
 @keyframes pinPulse1{
   0%  {transform:translate(-50%,-50%) scale(.85);opacity:.8}
@@ -1224,23 +1228,21 @@ function renderPins(){
     const isFav=favs.has(c.id);
     const isSel=selId===c.id;
     const {icon,cls:wxCls}=getPinWeather(c,tlDayIdx);
-    const cls=isFav?'fav':wxCls;
+    const cls=wxCls;  // 찜 여부와 무관하게 항상 날씨 색상 사용
     const selCls=isSel?' sel':'';
 
+    // 라벨: 찜/일반 동일 — 날씨아이콘 + 캠핑장명
     let label='', pbExtra='';
-    if(isFav){
-      if(pinMode==='dot')       pbExtra=' dot';
-      else if(pinMode==='mini'){ pbExtra=' mini'; label='♥'; }
-      else { const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name; label=`♥ ${nm}`; }
-    } else {
-      if(pinMode==='dot')       pbExtra=' dot';
-      else if(pinMode==='mini'){ pbExtra=' mini'; label=icon; }
-      else if(pinMode==='pill'){ const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name; label=`${icon} ${nm}`; }
-      else { const nm=c.name.length>6?c.name.slice(0,6)+'…':c.name; label=`${icon} ${nm}`; }
-    }
+    if(pinMode==='dot')       pbExtra=' dot';
+    else if(pinMode==='mini'){ pbExtra=' mini'; label=icon; }
+    else if(pinMode==='pill'){ const nm=c.name.length>5?c.name.slice(0,5)+'…':c.name; label=`${icon} ${nm}`; }
+    else { const nm=c.name.length>6?c.name.slice(0,6)+'…':c.name; label=`${icon} ${nm}`; }
+
+    // 찜 핀: 우상단에 작은 ❤️ 배지 오버레이
+    const favBadge = isFav ? '<span class="fav-badge">❤</span>' : '';
 
     // onclick을 인라인으로 — CustomOverlay content는 HTML string
-    const content=`<div class="pin${selCls}" onclick="selectCamp('${c.id}')" style="pointer-events:auto"><div class="pin-ring"></div><div class="pin-ring2"></div><div class="pb ${cls}${pbExtra}">${label}</div></div>`;
+    const content=`<div class="pin${selCls}" onclick="selectCamp('${c.id}')" style="pointer-events:auto"><div class="pin-ring"></div><div class="pin-ring2"></div><div class="pb ${cls}${pbExtra}">${label}</div>${favBadge}</div>`;
     const zIdx=isSel?30:isFav?20:1;
 
     if(pinOverlays[c.id]){
@@ -2083,7 +2085,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.49';
+const APP_VERSION = 'v5.50';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
