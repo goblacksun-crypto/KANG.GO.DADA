@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.53 | Deployed: 2026-05-10 17:28:00 -->
+<!-- Version: v5.54 | Deployed: 2026-05-10 17:38:39 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -19,6 +19,9 @@
   --blue:#378ADD;--bl:#E6F1FB;
   --amber:#BA7517;--al:#FAEEDA;
   --red:#E24B4A;--rl:#FCEBEB;
+  --rain:#1565C0;--rainl:#E3F0FF;  /* 비 — 진남색 */
+  --snow:#455A64;--snowl:#ECEFF1;  /* 눈 — 차콜 */
+  --cloud:#607D8B;--cloudl:#ECEFF1; /* 흐림 — 슬레이트 */
   --r:10px;--rs:6px
 }
 body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);font-size:14px;overflow:hidden;height:100vh}
@@ -162,8 +165,11 @@ select:focus{border-color:var(--teal)}
 .pb.g{background:#1D9E75}.pb.g::after{border-top-color:#1D9E75}
 .pb.y{background:#BA7517}.pb.y::after{border-top-color:#BA7517}
 .pb.r{background:#E24B4A}.pb.r::after{border-top-color:#E24B4A}
+.pb.c{background:var(--cloud)}.pb.c::after{border-top-color:var(--cloud)}
+.pb.wr{background:var(--rain)}.pb.wr::after{border-top-color:var(--rain)}
+.pb.ws{background:var(--snow)}.pb.ws::after{border-top-color:var(--snow)}
 .pb.fav{background:#D4920A}.pb.fav::after{border-top-color:#D4920A}
-.pb.dot.g,.pb.dot.y,.pb.dot.r,.pb.dot.fav{border:1.5px solid rgba(255,255,255,.7)}
+.pb.dot.g,.pb.dot.y,.pb.dot.r,.pb.dot.c,.pb.dot.wr,.pb.dot.ws,.pb.dot.fav{border:1.5px solid rgba(255,255,255,.7)}
 /* ── 찜 핀 ❤️ 뱃지 (핀 우상단 오버레이) ── */
 .fav-badge{position:absolute;top:-5px;right:-5px;font-size:10px;line-height:1;pointer-events:none;z-index:5;
   background:#fff;border-radius:50%;width:14px;height:14px;display:flex;align-items:center;justify-content:center;
@@ -221,7 +227,8 @@ select:focus{border-color:var(--teal)}
 .wgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
 .wd{background:var(--bg3);border-radius:4px;padding:4px 1px;text-align:center;position:relative}
 .wd.wknd{background:var(--tl)}
-.wd.rainy{background:var(--bl)}
+.wd.rainy{background:var(--rainl)}
+.wd.snowy{background:var(--snowl)}
 .wd.today{border:1.5px solid var(--teal)}
 .wdn{font-size:8px;color:var(--t3);font-weight:600}
 .wdd{font-size:8px;color:var(--t3);margin-top:1px}
@@ -270,6 +277,8 @@ a.link-btn{display:inline-flex}
 .map-src-row{width:100%;display:flex;gap:4px;padding-top:4px;border-top:1px solid var(--bd);margin-top:2px}
 .map-src-btn{font-size:10px;padding:2px 9px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
 .map-src-btn.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
+.all-src-btn{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
+.all-src-btn.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:700}
 .tl-label{font-size:11px;color:var(--t2);white-space:nowrap;font-weight:600;min-width:90px}
 .tl-slider{flex:1;accent-color:var(--teal);cursor:pointer;height:3px}
 .tl-date{font-size:10px;color:var(--teal);white-space:nowrap;min-width:55px;text-align:right;font-weight:600}
@@ -381,6 +390,13 @@ a.link-btn{display:inline-flex}
 
   <!-- 검색 탭 -->
   <div id="stab-search" style="display:flex;flex-direction:column;flex:none;overflow:visible">
+    <!-- 날씨 출처 선택 (지도 핀 + 상세패널 동시 반영) -->
+    <div style="padding:6px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:var(--bg3)">
+      <span style="font-size:10px;color:var(--t3);white-space:nowrap">날씨 출처</span>
+      <button class="all-src-btn on" data-src="기상청" onclick="setAllWxSrc('기상청')">🏛 기상청</button>
+      <button class="all-src-btn" data-src="weather.com" onclick="setAllWxSrc('weather.com')">🌐 웨더닷컴</button>
+      <button class="all-src-btn" data-src="AccuWeather" onclick="setAllWxSrc('AccuWeather')">🎯 아큐웨더</button>
+    </div>
     <div class="sp">
       <div class="srow">
         <select id="selDo" onchange="onDoChange()">
@@ -447,10 +463,11 @@ a.link-btn{display:inline-flex}
 
         <div class="minfo" id="mapInfo">전국 캠핑장</div>
         <div class="mleg">
-          <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
-          <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
-          <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
-          <div><span style="position:relative;display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:middle"><span class="ldot" style="background:#1D9E75;position:absolute;inset:0;margin:0"></span><span style="position:absolute;top:-3px;right:-4px;font-size:7px;line-height:1">❤</span></span>찜한 캠핑장</div>
+          <div><span class="ldot" style="background:#1D9E75"></span>맑음</div>
+          <div><span class="ldot" style="background:#BA7517"></span>구름 / 흐림</div>
+          <div><span class="ldot" style="background:var(--rain)"></span>비</div>
+          <div><span class="ldot" style="background:var(--snow)"></span>눈</div>
+          <div><span style="font-size:12px;color:#E24B4A;margin-right:5px">❤</span>찜한 캠핑장</div>
         </div>
         <div class="srcpanel">
           <b>데이터 출처</b>
@@ -472,13 +489,7 @@ a.link-btn{display:inline-flex}
             <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
             <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
           </div>
-          <!-- 날씨 제공 기관 선택 -->
-          <div class="map-src-row">
-            <span style="font-size:9px;color:var(--t3);line-height:22px;flex-shrink:0">출처</span>
-            <button class="map-src-btn on" data-src="기상청" onclick="setMapWxSrc('기상청')">🏛 기상청</button>
-            <button class="map-src-btn" data-src="weather.com" onclick="setMapWxSrc('weather.com')">🌐 웨더닷컴</button>
-            <button class="map-src-btn" data-src="AccuWeather" onclick="setMapWxSrc('AccuWeather')">🎯 아큐웨더</button>
-          </div>
+          <!-- 날씨 출처는 좌측 사이드바로 이동 -->
         </div>
         <div class="mctrl">
           <button class="mcbtn" onclick="mZoom(1.4)">+</button>
@@ -1669,13 +1680,16 @@ function renderDetail(c,wx,loading=false){
   const w1=w.slice(0,7),w2=w.slice(7,14),w3=w.slice(14,21);
   const isToday=(d,i)=>i===0;
   const wdH=(days,offset=0)=>days.map((d,i)=>{
-    const cls=[d.wknd?'wknd':'',d.rain>=40?'rainy':'',offset+i===0?'today':''].filter(Boolean).join(' ');
+    const isRain=d.icon==='🌧'||d.rain>=40;
+    const isSnow=d.icon==='❄'||d.icon==='🌨';
+    const cls=[d.wknd?'wknd':'',isRain?'rainy':'',isSnow?'snowy':'',offset+i===0?'today':''].filter(Boolean).join(' ');
+    const rainColor=isRain?'var(--rain)':isSnow?'var(--snow)':'var(--t3)';
     return `<div class="wd ${cls}">
       <div class="wdn">${d.dow}</div>
       <div class="wdd" style="font-size:7px;color:var(--t3)">${d.date}</div>
       <div class="wdi">${d.icon}</div>
       <div class="wdh">${d.hi}°</div><div class="wdl">${d.lo}°</div>
-      <div class="wdr" style="color:${d.rain>=40?'var(--red)':'var(--t3)'}">${d.rain}%</div>
+      <div class="wdr" style="color:${rainColor}">${d.rain}%</div>
     </div>`;
   }).join('');
   const ALL_FAC=["전기","샤워실","화장실","개수대","매점","주차","반려동물","수영장","놀이터","취사장","침구","에어컨","바베큐"];
@@ -1931,17 +1945,29 @@ function getPinWeather(c, dayIdx) {
     rain = Math.floor(seed) % 15;   // 최대 14%
     icon = rain > 7 ? '⛅' : '☀';  // 맑음·구름조금만
   }
-  const cls = rain >= 40 ? 'r' : rain >= 20 ? 'y' : 'g';
+  // 아이콘 기반 색상 (지도 핀·범례 통일)
+  const ICON_CLS = {'☀':'g','⛅':'y','☁':'c','🌧':'wr','❄':'ws','🌨':'ws','🌬':'r','💨':'y','🍃':'g'};
+  const cls = ICON_CLS[icon] || (rain >= 40 ? 'wr' : rain >= 20 ? 'y' : 'g');
   const text = WX_TEXT[icon] || '맑음';
   return { rain, icon, cls, text };
 }
 
-/* ══ 날씨 제공 기관 선택 (지도 핀 적용) ══ */
-function setMapWxSrc(src) {
+/* ══ 날씨 출처 통합 선택 (지도 핀 + 상세패널 동시 반영) ══ */
+function setAllWxSrc(src) {
   mapWxSrc = src;
-  document.querySelectorAll('.map-src-btn').forEach(b => b.classList.toggle('on', b.dataset.src === src));
+  sbWxSrc  = src;
+  // 버튼 상태 업데이트 (사이드바)
+  document.querySelectorAll('.all-src-btn').forEach(b => b.classList.toggle('on', b.dataset.src === src));
+  // 지도 핀 갱신
   renderPins();
+  // 선택된 캠핑장의 상세패널도 갱신
+  const c = ALL.find(x => x.id === selId);
+  if (c && wxCache[selId]) {
+    renderDetail(c, wxVariance(wxCache[selId], src), false);
+  }
 }
+/* 구 함수 유지 (호환성) */
+function setMapWxSrc(src) { setAllWxSrc(src); }
 
 function setMapWeatherMode(mode) {
   mapWeatherMode = mode;
@@ -1949,7 +1975,7 @@ function setMapWeatherMode(mode) {
   document.getElementById('wxModeWind').classList.toggle('on', mode === 'wind');
   const leg = document.querySelector('.mleg');
   if (leg) {
-    const favLegend = `<div><span style="position:relative;display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:middle"><span class="ldot" style="background:#1D9E75;position:absolute;inset:0;margin:0"></span><span style="position:absolute;top:-3px;right:-4px;font-size:7px;line-height:1">❤</span></span>찜한 캠핑장</div>`;
+    const favLegend = `<div><span style="font-size:12px;color:#E24B4A;margin-right:5px">❤</span>찜한 캠핑장</div>`;
     if (mode === 'wind') {
       leg.innerHTML = `
         <div><span class="ldot" style="background:#1D9E75"></span>약풍 5m/s 미만</div>
@@ -1958,9 +1984,10 @@ function setMapWeatherMode(mode) {
         ${favLegend}`;
     } else {
       leg.innerHTML = `
-        <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
-        <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
-        <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
+        <div><span class="ldot" style="background:#1D9E75"></span>맑음</div>
+        <div><span class="ldot" style="background:#BA7517"></span>구름 / 흐림</div>
+        <div><span class="ldot" style="background:var(--rain)"></span>비</div>
+        <div><span class="ldot" style="background:var(--snow)"></span>눈</div>
         ${favLegend}`;
     }
   }
@@ -2100,7 +2127,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.53';
+const APP_VERSION = 'v5.54';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
