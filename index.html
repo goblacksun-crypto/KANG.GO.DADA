@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.50 | Deployed: 2026-05-10 16:58:18 -->
+<!-- Version: v5.51 | Deployed: 2026-05-10 17:06:53 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -404,12 +404,6 @@ a.link-btn{display:inline-flex}
         <span id="sbAirStatus" style="font-size:10px;color:var(--t3);margin-left:auto">불러오는 중…</span>
       </div>
     </div>
-    <div id="sbWx" class="wsec" style="flex:none;overflow:hidden;border-bottom:1px solid var(--bd)">
-      <div style="padding:8px 12px;text-align:center;color:var(--t3);font-size:11px;display:flex;align-items:center;gap:6px;justify-content:center">
-        <span style="font-size:16px;opacity:.3">🌤</span>
-        <span>캠핑장을 선택하면 날씨 예보가 표시됩니다</span>
-      </div>
-    </div>
     <div class="lhdr">
       <span id="listCnt">로드 중...</span>
       <select id="sortSel" onchange="applyFilter(true)">
@@ -465,9 +459,10 @@ a.link-btn{display:inline-flex}
         <!-- ── 타임라인 슬라이더 ── -->
         <div class="timeline-wrap" id="timelineWrap">
           <div class="tl-label" id="tlLabel">📅 오늘 <span class="tl-today-badge">D+0</span></div>
-          <input type="range" class="tl-slider" id="tlSlider" min="0" max="13" value="0"
-            oninput="onTimelineChange(parseInt(this.value))">
-          <div class="tl-date" id="tlDate">2주 예보 탐색</div>
+          <input type="range" class="tl-slider" id="tlSlider" min="0" max="20" value="0"
+            oninput="onTimelineChange(parseInt(this.value))"
+            onchange="onTimelineChange(parseInt(this.value))">
+          <div class="tl-date" id="tlDate">3주 예보 탐색</div>
           <div class="wx-mode-btns">
             <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
             <button id="wxModeWind" class="wx-mode-btn" onclick="setMapWeatherMode('wind')">💨 바람</button>
@@ -476,8 +471,8 @@ a.link-btn{display:inline-flex}
           <div class="map-src-row">
             <span style="font-size:9px;color:var(--t3);line-height:22px;flex-shrink:0">출처</span>
             <button class="map-src-btn on" data-src="기상청" onclick="setMapWxSrc('기상청')">🏛 기상청</button>
-            <button class="map-src-btn" data-src="weather.com" onclick="setMapWxSrc('weather.com')">🌐 weather.com</button>
-            <button class="map-src-btn" data-src="AccuWeather" onclick="setMapWxSrc('AccuWeather')">🎯 AccuWeather</button>
+            <button class="map-src-btn" data-src="weather.com" onclick="setMapWxSrc('weather.com')">🌐 웨더닷컴</button>
+            <button class="map-src-btn" data-src="AccuWeather" onclick="setMapWxSrc('AccuWeather')">🎯 아큐웨더</button>
           </div>
         </div>
         <div class="mctrl">
@@ -1246,7 +1241,9 @@ function renderPins(){
     const zIdx=isSel?30:isFav?20:1;
 
     if(pinOverlays[c.id]){
+      // setContent 후 setMap(null)→setMap 강제 재렌더 (슬라이더 갱신 보장)
       pinOverlays[c.id].setContent(content);
+      pinOverlays[c.id].setMap(null);
       pinOverlays[c.id].setMap(kakaoMap);
     } else {
       const ov=new kakao.maps.CustomOverlay({
@@ -1555,8 +1552,8 @@ function parseKma(data){
     result.push({dow:DAYS[d.getDay()],date:ds.slice(4,6)+'/'+ds.slice(6,8),
       wknd:d.getDay()===0||d.getDay()===6,rain,icon,hi,lo,wsd});
   });
-  // 3일→14일 추정 보완
-  while(result.length<14){
+  // 3일→21일 추정 보완
+  while(result.length<21){
     const last=result[result.length-1];
     const [m,dd]=last.date.split('/').map(Number);
     const nd=new Date(new Date().getFullYear(),m-1,dd+1);
@@ -1568,7 +1565,7 @@ function parseKma(data){
       hi:(last.hi||15)+(Math.floor(Math.random()*4)-2),
       lo:(last.lo||7)+(Math.floor(Math.random()*4)-2),wsd:wv});
   }
-  return result.slice(0,14);
+  return result.slice(0,21);
 }
 function wxVariance(data,src){
   if(!data||src==='기상청')return data;
@@ -1662,7 +1659,7 @@ function renderDetail(c,wx,loading=false){
   }
   updateSbWx(c,wx,loading);
   const w=wx||[];
-  const w1=w.slice(0,7),w2=w.slice(7,14);
+  const w1=w.slice(0,7),w2=w.slice(7,14),w3=w.slice(14,21);
   const isToday=(d,i)=>i===0;
   const wdH=(days,offset=0)=>days.map((d,i)=>{
     const cls=[d.wknd?'wknd':'',d.rain>=40?'rainy':'',offset+i===0?'today':''].filter(Boolean).join(' ');
@@ -1704,9 +1701,10 @@ function renderDetail(c,wx,loading=false){
       </div>
     </div>
     <div class="wsec">
-      <div class="wshdr"><div class="wstitle">14일 날씨 예보</div><span style="font-size:9px;color:var(--t3)">기상청 단기예보</span></div>
+      <div class="wshdr"><div class="wstitle">21일 날씨 예보</div><span style="font-size:9px;color:var(--t3)">기상청 단기예보</span></div>
       <div class="wklabel">이번 주</div><div class="wgrid">${wdH(w1,0)}</div>
-      <div class="wklabel" style="margin-top:6px">다음 주</div><div class="wgrid">${wdH(w2,7)}</div>
+      <div class="wklabel" style="margin-top:6px">2주차</div><div class="wgrid">${wdH(w2,7)}</div>
+      ${w3.length?`<div class="wklabel" style="margin-top:6px">3주차</div><div class="wgrid">${wdH(w3,14)}</div>`:''}
     </div>`:''}
     <div class="dhdr">
       <div class="dhdr-top">
@@ -2085,7 +2083,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.50';
+const APP_VERSION = 'v5.51';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
