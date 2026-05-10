@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.47 | Deployed: 2026-05-10 15:54:07 -->
+<!-- Version: v5.48 | Deployed: 2026-05-10 16:18:14 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -102,13 +102,6 @@ select:focus{border-color:var(--teal)}
 .sbtn:hover{background:#178f68}
 .sr{padding:6px 9px;background:var(--bg3);color:var(--t2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:12px}
 
-/* 칩 */
-.chips{padding:8px 10px;border-bottom:1px solid var(--bd);flex-shrink:0}
-.clabel{font-size:10px;color:var(--t3);margin:5px 0 3px;display:block}
-.clabel:first-child{margin-top:0}
-.crow{display:flex;flex-wrap:wrap;gap:4px}
-.chip{font-size:11px;padding:3px 8px;border-radius:99px;border:1px solid var(--bd2);color:var(--t2);background:var(--bg2)}
-.chip.on{background:var(--tl);border-color:var(--teal);color:var(--td)}
 
 /* 목록 */
 .lhdr{padding:6px 10px;font-size:11px;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
@@ -181,7 +174,7 @@ select:focus{border-color:var(--teal)}
 .pin-ring2{border:1.5px solid #1D9E75}
 .pin.sel .pin-ring {animation:pinPulse1 1.5s ease-out infinite}
 .pin.sel .pin-ring2{animation:pinPulse2 1.5s ease-out .45s infinite}
-.mleg{position:absolute;bottom:52px;left:12px;background:rgba(255,255,255,.92);border-radius:var(--rs);padding:8px 10px;font-size:10px;border:1px solid var(--bd);z-index:9}
+.mleg{position:absolute;bottom:52px;left:12px;background:rgba(255,255,255,.95);border-radius:var(--rs);padding:9px 12px;font-size:11px;border:1px solid var(--bd);z-index:9;line-height:1.7}
 .mleg div{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
@@ -387,34 +380,9 @@ a.link-btn{display:inline-flex}
         <select id="selSi" onchange="onSiChange()"><option value="">전체 시/군/구</option></select>
       </div>
       <div class="srow">
-        <input class="si" id="sinput" type="text" placeholder="캠핑장 이름 검색..." onkeydown="if(event.key==='Enter')runSearch()">
+        <input class="si" id="sinput" type="text" placeholder="캠핑장 이름 검색..." oninput="applyFilter()" onkeydown="if(event.key==='Enter')runSearch()">
         <button class="sbtn" onclick="runSearch()">검색</button>
         <button class="sr" onclick="resetSearch()">✕</button>
-      </div>
-    </div>
-    <!-- 칩 필터 -->
-    <div class="chips">
-      <span class="clabel">빠른 필터</span>
-      <div class="crow">
-        <button class="chip" data-f="주말적합" onclick="toggleChip(this)">☀ 주말적합</button>
-        <button class="chip" data-f="전기" onclick="toggleChip(this)">⚡ 전기</button>
-        <button class="chip" data-f="샤워실" onclick="toggleChip(this)">🚿 샤워실</button>
-        <button class="chip" data-f="반려동물" onclick="toggleChip(this)">🐾 반려동물</button>
-        <button class="chip" data-f="수영장" onclick="toggleChip(this)">🏊 수영장</button>
-      </div>
-      <span class="clabel">유형</span>
-      <div class="crow">
-        <button class="chip" data-f="오토캠핑" onclick="toggleChip(this)">🚗 오토캠핑</button>
-        <button class="chip" data-f="글램핑" onclick="toggleChip(this)">🏕 글램핑</button>
-        <button class="chip" data-f="카라반" onclick="toggleChip(this)">🚐 카라반</button>
-        <button class="chip" data-f="일반야영" onclick="toggleChip(this)">⛺ 일반야영</button>
-      </div>
-      <span class="clabel">환경</span>
-      <div class="crow">
-        <button class="chip" data-f="계곡" onclick="toggleChip(this)">💧 계곡</button>
-        <button class="chip" data-f="바다" onclick="toggleChip(this)">🌊 바다</button>
-        <button class="chip" data-f="강/호수" onclick="toggleChip(this)">🏞 강/호수</button>
-        <button class="chip" data-f="숲/산" onclick="toggleChip(this)">🌲 숲/산</button>
       </div>
     </div>
     <div id="sbSeoulAir" style="flex:none;overflow:hidden;border-bottom:1px solid var(--bd);padding:8px 12px;font-size:11px;background:linear-gradient(135deg,#f0f9ff 0%,#e8f5f0 100%)">
@@ -731,7 +699,7 @@ let ALL = [];          // 전체 캠핑장
 let FILTERED = [];     // 현재 필터된 목록
 let RENDERED_IDS = []; // 현재 렌더된 ID 목록 (렌더 중복 방지)
 let favs = new Set(JSON.parse(localStorage.getItem('cfavs')||'[]'));
-let chips = new Set();
+// chips Set 제거됨 (v48 칩 필터 삭제)
 let selId = null;
 
 /* ══ 캠핑장 데이터 캐시 (24시간, 압축 저장) ══ */
@@ -959,24 +927,6 @@ function _applyFilter() {
     if(doV && c.doNm!==doV) return false;
     if(siV && siV!=='전체' && c.siNm!==siV) return false;
     if(txt && !c.name.toLowerCase().includes(txt)&&!c.addr.toLowerCase().includes(txt)) return false;
-    for(const f of chips){
-      // 날씨 조건
-      if(f==='주말적합' && (c.rain||50)>=30) return false;
-      // 유형 필터 — induty 포함 여부
-      if(['오토캠핑','글램핑','카라반','일반야영'].includes(f)) {
-        if(!c.types.some(t=>t.includes(f))) return false;
-      }
-      // 환경 필터 — lctCl 포함 여부 (단어 매핑)
-      if(f==='계곡' && !c.env.some(e=>e.includes('계곡'))) return false;
-      if(f==='바다' && !c.env.some(e=>e.includes('바다')||e.includes('해변')||e.includes('해수욕'))) return false;
-      if(f==='강/호수' && !c.env.some(e=>e.includes('강')||e.includes('호수')||e.includes('하천')||e.includes('저수지'))) return false;
-      if(f==='숲/산' && !c.env.some(e=>e.includes('숲')||e.includes('산')||e.includes('forest'))) return false;
-      // 시설 필터 — fac 배열 포함 여부
-      if(f==='전기' && !c.fac.includes('전기')) return false;
-      if(f==='샤워실' && !c.fac.includes('샤워실')) return false;
-      if(f==='반려동물' && !c.fac.includes('반려동물')) return false;
-      if(f==='수영장' && !c.fac.includes('수영장')) return false;
-    }
     return true;
   });
 
@@ -1363,19 +1313,13 @@ function onSiChange(){
   }
   applyFilter(true);
 }
-function toggleChip(el){
-  const f=el.dataset.f;el.classList.toggle('on');
-  chips.has(f)?chips.delete(f):chips.add(f);
-  applyFilter(true);
-}
 function runSearch(){applyFilter(true);}
 function resetSearch(){
   document.getElementById('selDo').value='';
   document.getElementById('selSi').innerHTML='<option value="">전체 시/군/구</option>';
   document.getElementById('sinput').value='';
-  document.querySelectorAll('.chip.on').forEach(c=>c.classList.remove('on'));
   document.querySelectorAll('.rb').forEach(b=>b.classList.toggle('on',b.dataset.do===''));
-  chips.clear();mReset();applyFilter(true);
+  mReset();applyFilter(true);
 }
 
 /* ══ 서울시 실시간 대기질 (openAPI.seoul.go.kr · RealtimeCityAir) ══ */
@@ -1689,6 +1633,9 @@ function makeFallbackW(c){
 function renderDetail(c,wx,loading=false){
   document.getElementById('dempty').style.display='none';
   document.getElementById('dcontent').style.display='block';
+  // 새 캠핑장 선택 시 상세패널 스크롤 맨 위로
+  const detailEl = document.querySelector('.detail');
+  if(detailEl && !loading) detailEl.scrollTop = 0;
   updateSbWx(c,wx,loading);
   const w=wx||[];
   const w1=w.slice(0,7),w2=w.slice(7,14);
@@ -2100,7 +2047,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.47';
+const APP_VERSION = 'v5.48';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
