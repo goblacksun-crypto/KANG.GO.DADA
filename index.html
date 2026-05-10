@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.56 | Deployed: 2026-05-10 18:19:15 -->
+<!-- Version: v5.57 | Deployed: 2026-05-10 18:26:54 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -411,8 +411,8 @@ a.link-btn{display:inline-flex}
     <div style="padding:6px 10px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:5px;flex-wrap:wrap;background:var(--bg3)">
       <span style="font-size:10px;color:var(--t3);white-space:nowrap">날씨 출처</span>
       <button class="all-src-btn on" data-src="기상청" onclick="setAllWxSrc('기상청')">🏛 기상청</button>
-      <button class="all-src-btn" data-src="weather.com" onclick="setAllWxSrc('weather.com')">🌐 웨더닷컴</button>
-      <button class="all-src-btn" data-src="AccuWeather" onclick="setAllWxSrc('AccuWeather')">🎯 아큐웨더</button>
+      <button class="all-src-btn" data-src="weather.com" onclick="setAllWxSrc('weather.com')" title="기상청 대비 편차 추정값">🌐 웨더닷컴 <sup style="font-size:7px;opacity:.7">추정</sup></button>
+      <button class="all-src-btn" data-src="AccuWeather" onclick="setAllWxSrc('AccuWeather')" title="기상청 대비 편차 추정값">🎯 아큐웨더 <sup style="font-size:7px;opacity:.7">추정</sup></button>
     </div>
     <div class="sp">
       <div class="srow">
@@ -472,6 +472,7 @@ a.link-btn{display:inline-flex}
   <div class="mtabs">
     <button class="mtab on" onclick="showMtab('map',this)">🗺 지도</button>
     <button class="mtab" onclick="showMtab('chart',this)">📊 통계</button>
+    <button class="mtab" onclick="showMtab('windy',this)">🌬 윈디</button>
   </div>
   <div class="mviews">
     <div class="mv on" id="mv-map">
@@ -489,8 +490,9 @@ a.link-btn{display:inline-flex}
         <div class="srcpanel">
           <b>데이터 출처</b>
           · 한국관광공사 고캠핑 API (data.go.kr)<br>
-          · 서울시 실시간대기환경 (openAPI.seoul.go.kr)<br>
-          · 기상청 단기예보 API (data.go.kr)<br>
+          · 기상청 단기예보 3일 실측 (data.go.kr)<br>
+          · 서울시 실시간 대기환경 (openAPI.seoul.go.kr)<br>
+          · Windy ECMWF 72시간 예보 (windy.com)<br>
           <span style="color:var(--blue);cursor:pointer" onclick="toggleSrcModal()">▶ 상세 출처 보기</span>
         </div>
         <!-- ── 타임라인 슬라이더 ── -->
@@ -530,6 +532,19 @@ a.link-btn{display:inline-flex}
       </div>
       <div class="cpanel"><div class="cptitle">캠핑 유형 비율</div>
         <div style="position:relative;height:160px"><canvas id="cT" role="img" aria-label="유형 비율">로드 중</canvas></div>
+      </div>
+    </div>
+    <!-- ── Windy 탭 ── -->
+    <div class="mv" id="mv-windy" style="flex-direction:column">
+      <iframe id="windyFrame"
+        src=""
+        style="width:100%;flex:1;border:none"
+        allowfullscreen
+        title="Windy 바람·날씨 지도 (ECMWF)">
+      </iframe>
+      <div style="padding:4px 10px;font-size:9px;color:var(--t3);background:var(--bg2);border-top:1px solid var(--bd);display:flex;justify-content:space-between">
+        <span>출처: <a href="https://www.windy.com" target="_blank" style="color:var(--blue)">Windy.com</a> — ECMWF 전구 모델 72시간 예보 (무료 임베드)</span>
+        <span>⚠ 캠핑장 선택 시 해당 위치로 이동</span>
       </div>
     </div>
   </div>
@@ -579,10 +594,11 @@ a.link-btn{display:inline-flex}
       <!-- 타임라인 슬라이더 -->
       <div class="src-api-card blue">
         <div class="src-api-name">📅 타임라인 슬라이더</div>
-        <div class="src-api-row"><span class="src-api-key">위치</span><span class="src-api-val">지도 하단 슬라이더 바 (오늘 ~ 14일 후)</span></div>
-        <div class="src-api-row"><span class="src-api-key">기능</span><span class="src-api-val">슬라이더 이동 시 지도의 모든 핀이 해당 날짜의 예상 강수확률 색상으로 일괄 변경됩니다.</span></div>
-        <div class="src-api-row"><span class="src-api-key">데이터</span><span class="src-api-val">선택한 캠핑장의 날씨는 기상청 실제 예보, 미선택 캠핑장은 위치 기반 추정값을 사용합니다.</span></div>
-        <div class="src-api-row"><span class="src-api-key">활용 팁</span><span class="src-api-val">주말(D+5,D+6)로 슬라이더를 이동하면 이번 주말 전국 캠핑 날씨를 한눈에 파악할 수 있습니다.</span></div>
+        <div class="src-api-row"><span class="src-api-key">위치</span><span class="src-api-val">지도 하단 — ◀ 슬라이더 ▶ 버튼으로 오늘 ~ D+20 이동</span></div>
+        <div class="src-api-row"><span class="src-api-key">4가지 모드</span><span class="src-api-val"><strong>날씨</strong>(상태) · <strong>강수</strong>(%) · <strong>바람</strong>(m/s) · <strong>습도</strong>(%) — 버튼 클릭으로 전환, 지도 핀 색상 즉시 변경</span></div>
+        <div class="src-api-row"><span class="src-api-key">정확도</span><span class="src-api-val">✅ 클릭한 캠핑장 D+0~D+2 기상청 실측 &nbsp;⚠ D+3 이후 + 미클릭 캠핑장은 추정값</span></div>
+        <div class="src-api-row"><span class="src-api-key">시간별 보기</span><span class="src-api-val">캠핑장 선택 후 예보 섹션의 <strong>⏱ 시간별</strong> 버튼 → 3시간 간격 72시간 상세 예보(기온·강수·풍속·습도)</span></div>
+        <div class="src-api-row"><span class="src-api-key">활용 팁</span><span class="src-api-val">날씨 출처를 기상청/웨더닷컴(추정)/아큐웨더(추정)로 전환해 비교 가능. 🌬 윈디 탭으로 바람 시각화 확인.</span></div>
       </div>
 
       <!-- 검색 및 필터 -->
@@ -597,7 +613,7 @@ a.link-btn{display:inline-flex}
       <!-- 캠핑장 상세 -->
       <div class="src-api-card">
         <div class="src-api-name">📋 캠핑장 상세 정보</div>
-        <div class="src-api-row"><span class="src-api-key">날씨 예보</span><span class="src-api-val">선택 시 기상청 API 호출 → 이번 주/다음 주 14일 예보 표시. 출처 버튼(기상청/weather.com/AccuWeather)으로 비교 가능.</span></div>
+        <div class="src-api-row"><span class="src-api-key">날씨 예보</span><span class="src-api-val">기상청 API 호출 → <strong>⏱ 시간별</strong>(3일 72시간) + <strong>📅 일별</strong>(21일, D+3 이후 추정) 탭 전환. 출처 버튼으로 기상청/웨더닷컴(추정)/아큐웨더(추정) 비교.</span></div>
         <div class="src-api-row"><span class="src-api-key">서울 대기질</span><span class="src-api-val"><strong>서울 지역 캠핑장 선택 시</strong> 하단에 서울시 실시간 대기환경 섹션 자동 추가. PM10·PM2.5·NO2·O3·CO·SO2·통합대기지수 표시.</span></div>
         <div class="src-api-row"><span class="src-api-key">찜 기능</span><span class="src-api-val">♡ 버튼으로 찜 등록 → 상단 찜 탭에서 모아보기. 브라우저 로컬에 저장.</span></div>
         <div class="src-api-row"><span class="src-api-key">외부 링크</span><span class="src-api-val">고캠핑 공식 사이트, 캠핏 예약, 땡큐캠핑, 네이버 검색 등 바로가기 제공.</span></div>
@@ -638,9 +654,10 @@ a.link-btn{display:inline-flex}
       <!-- 요약 통계 -->
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div class="src-stat"><div class="src-stat-v" id="srcStatCamps">3,000+</div><div class="src-stat-k">캠핑장 수</div></div>
-        <div class="src-stat"><div class="src-stat-v">14일</div><div class="src-stat-k">기상 예보</div></div>
+        <div class="src-stat"><div class="src-stat-v">3일</div><div class="src-stat-k">실측 예보</div></div>
+        <div class="src-stat"><div class="src-stat-v">21일</div><div class="src-stat-k">예보(+추정포함)</div></div>
         <div class="src-stat"><div class="src-stat-v">25개</div><div class="src-stat-k">서울 자치구 대기</div></div>
-        <div class="src-stat"><div class="src-stat-v">3종</div><div class="src-stat-k">연동 API</div></div>
+        <div class="src-stat"><div class="src-stat-v">4종</div><div class="src-stat-k">연동 API/서비스</div></div>
       </div>
 
       <!-- API 1: 고캠핑 -->
@@ -666,17 +683,31 @@ a.link-btn{display:inline-flex}
           🌤 기상청 단기예보 API (VilageFcstInfoService 2.0)
           <span class="src-api-badge" style="background:var(--al);color:var(--amber)">공공데이터포털</span>
         </div>
-        <div class="src-api-row"><span class="src-api-key">목적</span><span class="src-api-val">선택한 캠핑장 위치 기반 날씨 예보 — 강수확률, 기온, 날씨 아이콘 14일치 제공</span></div>
-        <div class="src-api-row"><span class="src-api-key">수집량</span><span class="src-api-val">캠핑장 선택 시 해당 위치 격자(nx,ny) 기준 <strong>1회 호출 → 3일 실시간 + 11일 통계 추정</strong></span></div>
-        <div class="src-api-row"><span class="src-api-key">갱신 주기</span><span class="src-api-val">세션 내 캠핑장별 캐시(wxCache). 새 선택 시 최신 발표 시각(02/05/08/11/14/17/20/23시) 자동 선택.</span></div>
-        <div class="src-api-row"><span class="src-api-key">주요 필드</span><span class="src-api-val">POP(강수확률), TMP(기온), PTY(강수형태), SKY(하늘상태), TMX/TMN(최고·최저기온)</span></div>
+        <div class="src-api-row"><span class="src-api-key">목적</span><span class="src-api-val">선택한 캠핑장 위치 기반 날씨 예보 (날씨·강수·바람·습도 4지표, 시간별 3일 + 일별 21일)</span></div>
+        <div class="src-api-row"><span class="src-api-key">정확도</span><span class="src-api-val">✅ <strong>D+0~D+2 (72시간): 기상청 실측 예보</strong> — 신뢰 가능 &nbsp;|&nbsp; ⚠ <strong>D+3 이후: 마지막 예보값 기반 랜덤 추정</strong> — 참고용만</span></div>
+        <div class="src-api-row"><span class="src-api-key">수집량</span><span class="src-api-val">캠핑장 선택 시 해당 위치 격자(nx,ny) 기준 <strong>1회 호출</strong>. 3시간 간격 24슬롯(시간별) + 21일 일별 집계</span></div>
+        <div class="src-api-row"><span class="src-api-key">갱신 주기</span><span class="src-api-val">세션 내 캠핑장별 캐시(wxCache). 발표 후 10분 경과 시 최신 기준시각 자동 선택</span></div>
+        <div class="src-api-row"><span class="src-api-key">주요 필드</span><span class="src-api-val">POP(강수확률), TMP(기온), PTY(강수형태), SKY(하늘상태), WSD(풍속), REH(습도), TMX/TMN(최고·최저기온)</span></div>
         <div class="src-api-row"><span class="src-api-key">좌표 변환</span><span class="src-api-val">위·경도 → 기상청 격자(LCC 람베르트 정각원추 투영) 수식 내장 — 외부 라이브러리 무의존</span></div>
         <div class="src-api-row"><span class="src-api-key">Endpoint</span>
           <span class="src-api-val"><code class="src-api-url">https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?serviceKey={KEY}&numOfRows=1000&base_date={DATE}&base_time={TIME}&nx={NX}&ny={NY}&dataType=JSON</code></span>
         </div>
       </div>
 
-      <!-- API 3: 서울 대기질 -->
+      <!-- API 3: Windy -->
+      <div class="src-api-card" style="border-left-color:#00bcd4">
+        <div class="src-api-name">
+          🌬 Windy ECMWF 예보 (임베드)
+          <span class="src-api-badge" style="background:#e0f7fa;color:#006064">windy.com</span>
+          <span class="src-api-badge" style="background:#e8f5e9;color:#2e7d32">무료 임베드</span>
+        </div>
+        <div class="src-api-row"><span class="src-api-key">목적</span><span class="src-api-val">지도 탭 내 🌬 윈디 탭에서 바람·기온·강수 등을 ECMWF 모델 기반으로 시각화</span></div>
+        <div class="src-api-row"><span class="src-api-key">정확도</span><span class="src-api-val">✅ ECMWF(유럽중기예보센터) 전구 모델 — <strong>72시간(3일) 고신뢰 예보</strong>, 이후 7일 참고용</span></div>
+        <div class="src-api-row"><span class="src-api-key">API 방식</span><span class="src-api-val">별도 키 없음 — <code class="src-api-url">https://embed.windy.com/embed2.html?lat=…&lon=…&overlay=wind</code> iframe 임베드 (무료)</span></div>
+        <div class="src-api-row"><span class="src-api-key">연동</span><span class="src-api-val">캠핑장 선택 시 해당 위치로 자동 이동. 오버레이 전환(바람·기온·강수 등)은 윈디 UI 내에서 직접 가능</span></div>
+      </div>
+
+      <!-- API 4: 서울 대기질 -->
       <div class="src-api-card blue">
         <div class="src-api-name">
           🏙 서울시 실시간 도시대기 환경정보 (RealtimeCityAir)
@@ -1666,7 +1697,7 @@ async function selectCamp(id){
   // (renderPins는 날씨 fetch 후 호출되므로 선택 상태는 selId로 관리)
 
   // 지도 포커스
-  if(c.lat&&c.lng)focusMap(c.lat,c.lng,9.5,c.name);
+  if(c.lat&&c.lng){ focusMap(c.lat,c.lng,9.5,c.name); loadWindyFrame(c.lat,c.lng); }
   showMtab('map',document.querySelector('.mtab'));
 
   // 날씨 — 캠핑장별 캐시 (race condition 방지: reqId로 스냅샷 고정)
@@ -1785,6 +1816,10 @@ function renderDetail(c,wx,loading=false){
       <div class="wshdr">
         <div class="wstitle">날씨 예보 (21일)</div>
         <button class="view-toggle-btn" id="hourlyToggleBtn" onclick="toggleHourlyView('${c.id}')">⏱ 시간별</button>
+      </div>
+      <div style="font-size:9px;color:var(--t3);padding:2px 0 4px;display:flex;gap:6px;flex-wrap:wrap">
+        <span>✅ D+0~D+2 기상청 실측</span>
+        <span style="color:#BA7517">⚠ D+3 이후 추정값 (참고용)</span>
       </div>
       <div id="dailyForecastView">
         <div class="wklabel">이번 주</div><div class="wgrid">${wdH(w1,0)}</div>
@@ -1995,7 +2030,23 @@ function showMtab(id,btn){
       if(!kakaoMap) initMap();
       else { kakaoMap.relayout(); renderPins(); }
     },80);
+  } else if(id==='windy'){
+    loadWindyFrame();
   }
+}
+
+function loadWindyFrame(lat, lon) {
+  const frame = document.getElementById('windyFrame');
+  if (!frame) return;
+  const la = lat || 36.5, lo = lon || 128.0;
+  // Windy 무료 임베드 — ECMWF 바람 레이어 기본
+  const src = `https://embed.windy.com/embed2.html`
+    + `?lat=${la}&lon=${lo}&zoom=7&level=surface`
+    + `&overlay=wind&product=ecmwf&menu=&message=true`
+    + `&marker=&calendar=now&pressure=&type=map`
+    + `&location=coordinates&detail=&metricWind=m%2Fs`
+    + `&metricTemp=%C2%B0C&radarRange=-1`;
+  if (frame.src !== src) frame.src = src;
 }
 
 /* ══ 차트 ══ */
@@ -2267,7 +2318,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.56';
+const APP_VERSION = 'v5.57';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
