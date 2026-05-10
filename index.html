@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.51 | Deployed: 2026-05-10 17:06:53 -->
+<!-- Version: v5.53 | Deployed: 2026-05-10 17:28:00 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -79,11 +79,12 @@ button{font-family:inherit;cursor:pointer}
 .ast{font-size:11px;padding:2px 9px;border-radius:99px;font-weight:600}
 .ast.live{background:var(--tl);color:var(--td)}
 .ast.demo{background:var(--bg3);color:var(--t2)}
-/* ── 사이드바 (PC: 360px, 상세패널 내장) ── */
-.sb{width:360px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden}
-/* .detail을 사이드바 내부로 통합 (PC 우측패널 제거) */
-.detail{border-left:none!important;border-top:2px solid var(--teal)!important;width:100%!important;flex-shrink:0;overflow-y:auto;display:none;flex-direction:column;max-height:55vh}
-.detail.active{display:flex}
+/* ── 사이드바 (PC: 360px, 상세패널 내장, 전체 스크롤) ── */
+.sb{width:360px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--bd);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
+/* .detail을 사이드바 내부로 통합 — display:none!important로 충돌 방지 */
+.detail{border-left:none!important;border-top:2px solid var(--teal)!important;width:100%!important;
+  flex-shrink:0;overflow-y:visible;display:none!important;flex-direction:column;background:var(--bg2)}
+.detail.active{display:flex!important}
 .stabs{display:flex;border-bottom:1px solid var(--bd);flex-shrink:0}
 .stab{flex:1;padding:9px 0;text-align:center;font-size:13px;font-weight:500;color:var(--t3);background:none;border:none;border-bottom:2px solid transparent}
 .stab.on{color:var(--teal);border-bottom-color:var(--teal)}
@@ -110,7 +111,8 @@ select:focus{border-color:var(--teal)}
 /* 목록 */
 .lhdr{padding:6px 10px;font-size:11px;color:var(--t3);background:var(--bg3);border-bottom:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .lhdr select{flex:none;font-size:10px;padding:1px 5px;width:auto;border-radius:4px}
-.citems{overflow-y:auto;flex:1;will-change:transform}
+/* PC: 상세패널 포함한 전체 사이드바 스크롤 → 목록 고정높이 */
+.citems{overflow-y:auto;flex:none;max-height:320px;will-change:transform}
 .ci{padding:9px 10px;border-bottom:1px solid var(--bd);cursor:pointer;display:flex;gap:8px;align-items:flex-start}
 .ci:hover{background:var(--bg3)}
 .ci.on{background:var(--tl);border-left:3px solid var(--teal)}
@@ -198,8 +200,7 @@ select:focus{border-color:var(--teal)}
 .cpanel{background:var(--bg2);border-radius:var(--r);padding:12px;border:1px solid var(--bd)}
 .cptitle{font-size:12px;font-weight:600;margin-bottom:8px}
 
-/* 상세 패널 */
-.detail{width:340px;flex-shrink:0;background:var(--bg2);border-left:1px solid var(--bd);overflow-y:auto;display:flex;flex-direction:column}
+/* 상세 패널 — .sb 내부 배치 버전으로 교체됨 (line 84) */
 .dempty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;color:var(--t3);font-size:12px;padding:2rem;text-align:center}
 .dhdr{padding:12px;border-bottom:1px solid var(--bd)}
 .dhdr-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
@@ -274,6 +275,8 @@ a.link-btn{display:inline-flex}
 .tl-date{font-size:10px;color:var(--teal);white-space:nowrap;min-width:55px;text-align:right;font-weight:600}
 .tl-today-badge{font-size:9px;padding:1px 6px;border-radius:99px;background:var(--tl);color:var(--td);margin-left:4px;font-weight:600}
 .wx-mode-btns{display:flex;gap:4px;flex-shrink:0}
+.tl-step-btn{width:24px;height:24px;border:1px solid var(--bd2);border-radius:4px;background:var(--bg2);color:var(--t2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .1s}
+.tl-step-btn:hover{background:var(--teal);color:#fff;border-color:var(--teal)}
 .wx-mode-btn{font-size:10px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd2);background:var(--bg2);color:var(--t2);cursor:pointer;white-space:nowrap;transition:all .15s}
 .wx-mode-btn.on{background:var(--teal);border-color:var(--teal);color:#fff;font-weight:700}
 
@@ -377,7 +380,7 @@ a.link-btn{display:inline-flex}
   </div>
 
   <!-- 검색 탭 -->
-  <div id="stab-search" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+  <div id="stab-search" style="display:flex;flex-direction:column;flex:none;overflow:visible">
     <div class="sp">
       <div class="srow">
         <select id="selDo" onchange="onDoChange()">
@@ -417,7 +420,7 @@ a.link-btn{display:inline-flex}
   </div>
 
   <!-- 찜 탭 -->
-  <div id="stab-fav" style="display:none;flex-direction:column;flex:1;overflow:hidden">
+  <div id="stab-fav" style="display:none;flex-direction:column;flex:none;overflow:visible">
     <div class="lhdr"><span id="favCntLabel">찜 0개</span></div>
     <div class="citems" id="favList"></div>
   </div>
@@ -447,7 +450,7 @@ a.link-btn{display:inline-flex}
           <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
           <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
           <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
-          <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>
+          <div><span style="position:relative;display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:middle"><span class="ldot" style="background:#1D9E75;position:absolute;inset:0;margin:0"></span><span style="position:absolute;top:-3px;right:-4px;font-size:7px;line-height:1">❤</span></span>찜한 캠핑장</div>
         </div>
         <div class="srcpanel">
           <b>데이터 출처</b>
@@ -459,9 +462,11 @@ a.link-btn{display:inline-flex}
         <!-- ── 타임라인 슬라이더 ── -->
         <div class="timeline-wrap" id="timelineWrap">
           <div class="tl-label" id="tlLabel">📅 오늘 <span class="tl-today-badge">D+0</span></div>
+          <button class="tl-step-btn" onclick="stepTimeline(-1)" title="하루 이전">◀</button>
           <input type="range" class="tl-slider" id="tlSlider" min="0" max="20" value="0"
             oninput="onTimelineChange(parseInt(this.value))"
             onchange="onTimelineChange(parseInt(this.value))">
+          <button class="tl-step-btn" onclick="stepTimeline(1)" title="하루 이후">▶</button>
           <div class="tl-date" id="tlDate">3주 예보 탐색</div>
           <div class="wx-mode-btns">
             <button id="wxModeWx" class="wx-mode-btn on" onclick="setMapWeatherMode('wx')">🌤 날씨</button>
@@ -1544,9 +1549,11 @@ function parseKma(data){
     const wsdVals=Object.values(tm).map(t=>parseFloat(t.WSD||0)).filter(v=>v>0);
     const wsd=wsdVals.length?Math.round(wsdVals.reduce((a,b)=>a+b,0)/wsdVals.length*10)/10:0;
     const pty=parseInt(noon.PTY??0),sky=parseInt(noon.SKY??1);
-    // PTY 우선: 0=없음→SKY 사용, 3/7=눈, 나머지(1비·2진눈깨비·4소나기·5빗방울·6빗방울눈날림)=비
-    const icon = pty===0  ? (sky>=4?'☁':sky>=3?'⛅':'☀')
-               : (pty===3||pty===7) ? '❄'
+    // 하루 전체 최대 PTY — 저녁·야간 강수도 감지 (낮 맑아도 강수확률↑이면 비 아이콘)
+    const maxPty=Math.max(0,...Object.values(tm).map(t=>parseInt(t.PTY||0)));
+    const effPty=pty>0 ? pty : (rain>=40 && maxPty>0 ? maxPty : 0);
+    const icon = effPty===0  ? (sky>=4?'☁':sky>=3?'⛅':'☀')
+               : (effPty===3||effPty===7) ? '❄'
                : '🌧';
     const d=new Date(ds.slice(0,4)+'-'+ds.slice(4,6)+'-'+ds.slice(6,8));
     result.push({dow:DAYS[d.getDay()],date:ds.slice(4,6)+'/'+ds.slice(6,8),
@@ -1635,7 +1642,7 @@ function makeFallbackW(c){
   const baseRain=Math.floor(seed)%50;
   const DAYS=['일','월','화','수','목','금','토'];
   const today=new Date();
-  return Array.from({length:14},(_,i)=>{
+  return Array.from({length:21},(_,i)=>{
     const d=new Date(today);d.setDate(d.getDate()+i);
     const rv=Math.max(0,Math.min(95,baseRain+(Math.floor(Math.random()*26)-13)));
     const wv=Math.max(0,Math.round((1+Math.abs(Math.sin(seed+i))*6)*10)/10);
@@ -1942,18 +1949,19 @@ function setMapWeatherMode(mode) {
   document.getElementById('wxModeWind').classList.toggle('on', mode === 'wind');
   const leg = document.querySelector('.mleg');
   if (leg) {
+    const favLegend = `<div><span style="position:relative;display:inline-block;width:9px;height:9px;margin-right:6px;vertical-align:middle"><span class="ldot" style="background:#1D9E75;position:absolute;inset:0;margin:0"></span><span style="position:absolute;top:-3px;right:-4px;font-size:7px;line-height:1">❤</span></span>찜한 캠핑장</div>`;
     if (mode === 'wind') {
       leg.innerHTML = `
         <div><span class="ldot" style="background:#1D9E75"></span>약풍 5m/s 미만</div>
         <div><span class="ldot" style="background:#BA7517"></span>5~9m/s</div>
         <div><span class="ldot" style="background:#E24B4A"></span>강풍 9m/s 이상</div>
-        <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>`;
+        ${favLegend}`;
     } else {
       leg.innerHTML = `
         <div><span class="ldot" style="background:#1D9E75"></span>맑음 / 구름조금</div>
         <div><span class="ldot" style="background:#BA7517"></span>구름많음 / 흐림</div>
         <div><span class="ldot" style="background:#E24B4A"></span>비 / 눈</div>
-        <div><span class="ldot" style="background:#D4920A"></span>찜한 캠핑장</div>`;
+        ${favLegend}`;
     }
   }
   renderPins();
@@ -2017,6 +2025,15 @@ function initTimelineSlider() {
   const slider = document.getElementById('tlSlider');
   if (!slider) return;
   updateTimelineLabel(0);
+}
+
+/* 슬라이더 하루씩 이동 */
+function stepTimeline(delta) {
+  const slider = document.getElementById('tlSlider');
+  if (!slider) return;
+  const newVal = Math.max(0, Math.min(20, parseInt(slider.value||0) + delta));
+  slider.value = newVal;
+  onTimelineChange(newVal);
 }
 
 function onTimelineChange(dayIdx) {
@@ -2083,7 +2100,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.51';
+const APP_VERSION = 'v5.53';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
