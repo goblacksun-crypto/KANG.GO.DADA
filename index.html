@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.59 | Deployed: 2026-05-10 22:11:10 -->
+<!-- Version: v5.60 | Deployed: 2026-05-10 22:23:58 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -197,6 +197,7 @@ select:focus{border-color:var(--teal)}
 .mctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px}
 .mtype-btn.on{background:var(--teal)!important;color:#fff!important;border-color:var(--teal)!important}
 .mcbtn{width:30px;height:30px;background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.mtype-btn{width:auto!important;min-width:34px;padding:0 5px;font-size:10px!important;font-weight:600;letter-spacing:-0.2px}
 .mcbtn:hover{background:var(--bg3)}
 .minfo{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.9);border-radius:99px;padding:4px 12px;font-size:11px;color:var(--t2);border:1px solid var(--bd);white-space:nowrap;pointer-events:none}
 .srcpanel{position:absolute;bottom:12px;right:12px;background:rgba(255,255,255,.88);border-radius:var(--rs);padding:7px 10px;font-size:9px;color:var(--t3);border:1px solid var(--bd);max-width:180px;line-height:1.8}
@@ -448,16 +449,21 @@ a.link-btn{display:inline-flex}
         <span id="sbAirStatus" style="font-size:10px;color:var(--t3);margin-left:auto">불러오는 중…</span>
       </div>
     </div>
-    <div class="lhdr">
-      <span id="listCnt">로드 중...</span>
-      <select id="sortSel" onchange="applyFilter(true)">
-        <option value="seoul" selected>★ 서울우선</option>
-        <option value="name">이름순</option>
-        <option value="rain">날씨순</option>
-        <option value="dist">거리순</option>
-      </select>
+    <div class="lhdr" style="cursor:pointer" onclick="toggleCampList()" title="목록 접기/펼치기">
+      <span style="display:flex;align-items:center;gap:5px">
+        <span id="listToggleArrow" style="font-size:11px;transition:transform .2s">▾</span>
+        <span id="listCnt">로드 중...</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+        <select id="sortSel" onchange="applyFilter(true)">
+          <option value="seoul" selected>★ 서울우선</option>
+          <option value="name">이름순</option>
+          <option value="rain">날씨순</option>
+          <option value="dist">거리순</option>
+        </select>
+      </span>
     </div>
-    <div class="citems" id="campList"><div style="padding:2rem;text-align:center;color:var(--t3);font-size:12px">고캠핑 데이터 불러오는 중...</div></div>
+    <div class="citems" id="campList" style="max-height:220px"><div style="padding:2rem;text-align:center;color:var(--t3);font-size:12px">고캠핑 데이터 불러오는 중...</div></div>
   </div>
 
   <!-- 찜 탭 -->
@@ -1907,7 +1913,7 @@ async function selectCamp(id){
     const weekend=wxCache[id].filter(d=>d.wknd).slice(0,2);
     c.rain=weekend.length?Math.round(weekend.reduce((s,d)=>s+d.rain,0)/weekend.length):wxCache[id][0]?.rain||20;
   }
-  renderDetail(c,wxCache[id],false);
+  renderDetail(c,getFilteredWxData(id,sbWxSrc),false);
 
   // 서울 지역 캠핑장: openAPI.seoul.go.kr RealtimeCityAir 호출
   if (c.doNm === '서울특별시') {
@@ -2298,6 +2304,13 @@ const SRC_ACCURACY = {
   'Open-Meteo':{ color:'#378ADD', text:'🌍 Open-Meteo: D+0~D+15 유럽 수치모델 (무료 오픈 API)' },
 };
 
+function getFilteredWxData(id, src) {
+  const data = wxCache[id] || [];
+  if (src === '기상청') return data.filter(d => d.src === 'short' || d.src === 'mid');
+  if (src === 'Open-Meteo') return data.filter(d => d.src === 'openmeteo');
+  return data;
+}
+
 function setAllWxSrc(src) {
   mapWxSrc = src;
   sbWxSrc  = src;
@@ -2309,18 +2322,20 @@ function setAllWxSrc(src) {
   }
   renderPins();
   const c = ALL.find(x => x.id === selId);
-  if (c && wxCache[selId]) renderDetail(c, wxCache[selId], false);
+  if (c && wxCache[selId]) renderDetail(c, getFilteredWxData(selId, src), false);
 }
 function setMapWxSrc(src) { setAllWxSrc(src); }
 
 function openExternalWx(site) {
   const c = ALL.find(x => x.id === selId);
   const lat = c?.lat || 36.5, lng = c?.lng || 128.0;
-  const name = c?.name || '캠핑장';
+  const region = c ? (c.siNm || c.doNm || '') : '';
+  const name   = c?.name || '';
+  const q      = region ? region : '날씨';
   const urls = {
     windy:  `https://www.windy.com/?${lat},${lng},10`,
-    google: `https://www.google.com/search?q=${encodeURIComponent(name+' 날씨')}`,
-    naver:  `https://search.naver.com/search.naver?query=${encodeURIComponent(name+' 날씨')}`,
+    google: `https://www.google.com/search?q=${encodeURIComponent(q+' 날씨')}&hl=ko&lr=lang_ko`,
+    naver:  `https://search.naver.com/search.naver?where=nexearch&sm=top_sug.pre&query=${encodeURIComponent(q+' 날씨')}`,
   };
   if (urls[site]) window.open(urls[site], '_blank');
 }
@@ -2417,6 +2432,24 @@ function renderSbSeoulAir(failed) {
 }
 
 /* ══ 타임라인 슬라이더 ══ */
+/* ══ 캠핑장 목록 접기/펼치기 ══ */
+let campListCollapsed = false;
+function toggleCampList() {
+  campListCollapsed = !campListCollapsed;
+  const el  = document.getElementById('campList');
+  const arr = document.getElementById('listToggleArrow');
+  if (!el) return;
+  if (campListCollapsed) {
+    el.style.maxHeight = '0';
+    el.style.overflow  = 'hidden';
+    if (arr) arr.style.transform = 'rotate(-90deg)';
+  } else {
+    el.style.maxHeight = '220px';
+    el.style.overflow  = 'auto';
+    if (arr) arr.style.transform = '';
+  }
+}
+
 function initTimelineSlider() {
   const slider = document.getElementById('tlSlider');
   if (!slider) return;
@@ -2496,7 +2529,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.59';
+const APP_VERSION = 'v5.60';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
