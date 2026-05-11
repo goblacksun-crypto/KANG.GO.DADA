@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Version: v5.61 | Deployed: 2026-05-10 22:48:00 -->
+<!-- Version: v5.62 | Deployed: 2026-05-11 10:34:37 -->
 <!-- 제작: 강민식 (강고다다) | 2026 서울시 빅데이터 활용 경진대회 시각화 부문 | v42 -->
 <!-- 핵심: 전국 3,000개 캠핑장 + 기상청 2주 예보 + 서울시 실시간 대기질(RealtimeCityAir) 매시업 -->
 <html lang="ko">
@@ -195,6 +195,8 @@ select:focus{border-color:var(--teal)}
 .mleg div:last-child{margin-bottom:0}
 .ldot{width:9px;height:9px;border-radius:50%}
 .mctrl{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:3px;z-index:10}
+.windy-wx-strip{flex-shrink:0;background:var(--bg2);border-top:2px solid var(--teal);overflow-y:auto;max-height:140px}
+.windy-wx-strip .wgrid{display:flex;flex-wrap:nowrap;gap:3px;padding:4px 8px;width:max-content}
 .mtype-btn.on{background:var(--teal)!important;color:#fff!important;border-color:var(--teal)!important}
 .mcbtn{width:30px;height:30px;background:var(--bg2);border:1px solid var(--bd2);border-radius:var(--rs);font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.1)}
 .mtype-btn{width:auto!important;min-width:34px;padding:0 5px;font-size:10px!important;font-weight:600;letter-spacing:-0.2px}
@@ -366,6 +368,7 @@ a.link-btn{display:inline-flex}
   .timeline-wrap{position:relative;bottom:auto;flex-shrink:0}
   /* mctrl: 모바일에서 우측→좌측으로 이동 (슬라이더 ▶ 버튼 겹침 방지) */
   .mctrl{right:auto;left:10px}
+  .windy-wx-strip{max-height:90px}
 }
 </style>
 </head>
@@ -395,9 +398,9 @@ a.link-btn{display:inline-flex}
       <span style="font-size:10px;color:var(--t3);white-space:nowrap;flex-shrink:0">날씨</span>
       <button class="all-src-btn on" data-src="기상청" onclick="setAllWxSrc('기상청')">🏛 기상청</button>
       <button class="all-src-btn" data-src="Open-Meteo" onclick="setAllWxSrc('Open-Meteo')">🌍 오픈메테오</button>
-      <button class="all-src-btn" data-src="윈디" onclick="openExternalWx('windy')">🌬 윈디</button>
-      <button class="all-src-btn" data-src="구글" onclick="openExternalWx('google')">🔍 구글</button>
-      <button class="all-src-btn" data-src="네이버" onclick="openExternalWx('naver')">📍 네이버</button>
+      <button class="all-src-btn" data-src="윈디" onclick="showWindyInPanel()">🌬 윈디</button>
+      <button class="all-src-btn" data-src="구글" onclick="openExternalWx('google')">🔍 구글↗</button>
+      <button class="all-src-btn" data-src="네이버" onclick="openExternalWx('naver')">📍 네이버↗</button>
     </div>
     <div id="srcAccuracyNote" style="font-size:9px;color:var(--t3);line-height:1.5">
       <span style="color:#1D9E75">✅ 기상청 실측: D+0~D+2 단기 + D+3~D+9 중기예보</span>
@@ -566,13 +569,17 @@ a.link-btn{display:inline-flex}
     <div class="mv" id="mv-windy" style="flex-direction:column">
       <iframe id="windyFrame"
         src=""
-        style="width:100%;flex:1;border:none"
+        style="width:100%;flex:1;min-height:180px;border:none"
         allowfullscreen
         title="Windy 바람·날씨 지도 (ECMWF)">
       </iframe>
-      <div style="padding:4px 10px;font-size:9px;color:var(--t3);background:var(--bg2);border-top:1px solid var(--bd);display:flex;justify-content:space-between">
-        <span>출처: <a href="https://www.windy.com" target="_blank" style="color:var(--blue)">Windy.com</a> — ECMWF 전구 모델 72시간 예보 (무료 임베드)</span>
-        <span>⚠ 캠핑장 선택 시 해당 위치로 이동</span>
+      <!-- 날짜별 날씨 스트립 -->
+      <div class="windy-wx-strip" id="windyWxStrip">
+        <div style="padding:8px 12px;color:var(--t3);font-size:11px">캠핑장을 선택하면 날씨가 표시됩니다</div>
+      </div>
+      <div style="padding:4px 10px;font-size:9px;color:var(--t3);background:var(--bg2);border-top:1px solid var(--bd);display:flex;justify-content:space-between;flex-shrink:0">
+        <span>출처: <a href="https://www.windy.com" target="_blank" style="color:var(--blue)">Windy.com</a> — ECMWF 전구 모델 72시간 예보</span>
+        <span id="windyCampLabel" style="color:var(--teal);font-weight:600"></span>
       </div>
     </div>
   </div>
@@ -981,10 +988,14 @@ async function loadData() {
   } catch(e) {
     console.error(e);
     setAst('● API 오류','demo');
-    toast('API 오류: '+e.message);
-    // 샘플 데이터
-    ALL = prioritizeSeoul(SAMPLE);
-    applyFilter(); initMap(); initCharts();
+    toast('고캠핑 API 연결 실패 — 잠시 후 새로고침 해주세요');
+    ALL = [];
+    document.getElementById('campList').innerHTML =
+      '<div style="padding:2rem 1rem;text-align:center;color:var(--t3);font-size:12px;line-height:2">' +
+      '⚠ 캠핑장 데이터를 불러오지 못했습니다<br>' +
+      '<span style="font-size:11px">우측 상단 ↺ 새로고침 버튼을 눌러주세요</span></div>';
+    document.getElementById('listCnt').textContent = '0개';
+    initMap(); initCharts();
     // renderSigunguLabels 제거
   }
   setLbar(false);
@@ -1920,6 +1931,8 @@ async function selectCamp(id){
     c.rain=weekend.length?Math.round(weekend.reduce((s,d)=>s+d.rain,0)/weekend.length):wxCache[id][0]?.rain||20;
   }
   renderDetail(c,getFilteredWxData(id,sbWxSrc),false);
+  // 윈디 탭이 열려 있으면 날씨 스트립도 갱신
+  if(document.getElementById('mv-windy')?.classList.contains('on')) updateWindyWxStrip();
 
   // 서울 지역 캠핑장: openAPI.seoul.go.kr RealtimeCityAir 호출
   if (c.doNm === '서울특별시') {
@@ -2312,8 +2325,14 @@ const SRC_ACCURACY = {
 
 function getFilteredWxData(id, src) {
   const data = wxCache[id] || [];
-  if (src === '기상청') return data.filter(d => d.src === 'short' || d.src === 'mid');
-  if (src === 'Open-Meteo') return data.filter(d => d.src === 'openmeteo');
+  if (src === '기상청') {
+    const kma = data.filter(d => d.src === 'short' || d.src === 'mid');
+    return kma.length ? kma : data; // 기상청 API 실패 시 전체 데이터로 폴백
+  }
+  if (src === 'Open-Meteo') {
+    const om = data.filter(d => d.src === 'openmeteo');
+    return om.length ? om : data;  // Open-Meteo 실패 시 전체 데이터로 폴백
+  }
   return data;
 }
 
@@ -2331,6 +2350,51 @@ function setAllWxSrc(src) {
   if (c && wxCache[selId]) renderDetail(c, getFilteredWxData(selId, src), false);
 }
 function setMapWxSrc(src) { setAllWxSrc(src); }
+
+function showWindyInPanel() {
+  // 중앙 지도 영역을 윈디 뷰로 전환
+  const windyBtn = document.querySelector('.mtab:nth-child(3)');
+  showMtab('windy', windyBtn);
+  // 현재 선택 캠핑장 기준 윈디 로드 + 날씨 스트립 업데이트
+  const c = ALL.find(x => x.id === selId);
+  if (c?.lat) loadWindyFrame(c.lat, c.lng);
+  updateWindyWxStrip();
+}
+
+function updateWindyWxStrip() {
+  const el = document.getElementById('windyWxStrip');
+  const lbl = document.getElementById('windyCampLabel');
+  if (!el) return;
+  const c = ALL.find(x => x.id === selId);
+  const wx = selId ? getFilteredWxData(selId, sbWxSrc) : [];
+  if (lbl) lbl.textContent = c ? c.name : '';
+  if (!c || !wx.length) {
+    el.innerHTML = '<div style="padding:8px 12px;color:var(--t3);font-size:11px">캠핑장을 선택하면 날씨가 표시됩니다</div>';
+    return;
+  }
+  const wdCard = (d, idx) => {
+    const isRain = d.icon==='🌧' || d.rain>=40;
+    const isSnow = d.icon==='❄';
+    const cls = [d.wknd?'wknd':'', isRain?'rainy':'', isSnow?'snowy':'', idx===0?'today':''].filter(Boolean).join(' ');
+    const rc = isRain?'var(--rain)':isSnow?'var(--snow)':'var(--t3)';
+    return `<div class="wd ${cls}">
+      <div class="wdn">${d.dow}</div>
+      <div class="wdd" style="font-size:7px;color:var(--t3)">${d.date}</div>
+      <div class="wdi">${d.icon}</div>
+      <div class="wdh">${d.hi}°</div><div class="wdl">${d.lo}°</div>
+      <div class="wdr" style="color:${rc}">${d.rain}%</div>
+    </div>`;
+  };
+  el.innerHTML = `
+    <div style="padding:3px 8px 0;font-size:9px;color:var(--t3);display:flex;gap:10px">
+      <span style="color:#1D9E75">✅ D+0~2 기상청</span>
+      <span style="color:#1D9E75">✅ D+3~9 중기</span>
+      <span style="color:#378ADD">🌍 D+10~ Open-Meteo</span>
+    </div>
+    <div style="overflow-x:auto;padding:2px 8px 6px">
+      <div style="display:flex;gap:3px;width:max-content">${wx.map((d,i)=>wdCard(d,i)).join('')}</div>
+    </div>`;
+}
 
 function openExternalWx(site) {
   const c = ALL.find(x => x.id === selId);
@@ -2535,7 +2599,7 @@ const SAMPLE=[
 ];
 
 /* ══ 시작 ══ */
-const APP_VERSION = 'v5.61';
+const APP_VERSION = 'v5.62';
 document.addEventListener('DOMContentLoaded',()=>{
   // ALL 로드 전이라도 저장된 찜 숫자는 즉시 표시
   const savedFavs = JSON.parse(localStorage.getItem('cfavs')||'[]');
